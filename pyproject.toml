@@ -30,7 +30,7 @@ all = "warn"
 dev = ["devtools>=0.12.2"]
 
 [project.scripts]
-job-apply = "src.server:main"
+job-apply = "src.api.server:main"
 
 [tool.uv]
 package = true
