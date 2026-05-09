@@ -23,7 +23,8 @@
       "notes": "Notes",
       "address": "Address",
       "docs": "Docs",
-      "country": "Country"
+      "country": "Country",
+      "jobs": "Jobs"
     },
     "contacts": {
       "contact": "Contact",
@@ -34,7 +35,7 @@
       "email": "Email",
       "phone": "Phone",
       "url": "URL",
-      "company": "Company"
+      "jobs": "Jobs"
     }
   }
 }
