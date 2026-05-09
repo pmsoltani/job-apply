@@ -13,6 +13,7 @@ async def run_ingest(
     record_id: str,
     airtable: AirtableService,
     parser: ParserService,
+    model: str | None = None,
 ) -> None:
     f = c.fields
     try:
@@ -31,7 +32,7 @@ async def run_ingest(
             logger.error("[ingest %s] Neither AD URL nor Notes is populated.", record_id)
             return
 
-        job = await parser.extract_job(source_text)
+        job = await parser.extract_job(source_text, model=model)
 
         company_id = airtable.find_or_create_company(job.company)
         contact_id = None
@@ -58,6 +59,7 @@ async def run_generate(
     airtable: AirtableService,
     generator: GeneratorService,
     typst: TypstService,
+    model: str | None = None,
 ) -> None:
     f = c.fields
     try:
@@ -102,7 +104,7 @@ async def run_generate(
             ]
             to_name = " ".join(p for p in parts if p).strip() or "Hiring Manager"
 
-        content = await generator.generate_documents(job_prompt)
+        content = await generator.generate_documents(job_prompt, model=model)
 
         letter_data = LetterData(
             to=to_name,
