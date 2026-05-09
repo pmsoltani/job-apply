@@ -52,7 +52,8 @@ async def _run_ingest(record_id: str) -> None:
         if notes.strip():
             source_text = clean_markdown(notes)
         elif ad_url.strip():
-            raw = await fetch_url(ad_url)
+            jina_url = f"{c.JINA_BASE_URL}/{ad_url}"
+            raw = await fetch_url(jina_url, c.TIMEOUT_SECONDS)
             source_text = clean_markdown(raw)
         else:
             logger.error(
