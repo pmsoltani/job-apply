@@ -3,10 +3,11 @@ import logging
 import uvicorn
 from fastapi import BackgroundTasks, FastAPI
 
+from src import tasks
 from src.api.dependencies import AirtableDep, GeneratorDep, ParserDep, TypstDep
 from src.configs import c
 from src.pipelines import run_generate, run_ingest
-from src.schemas import WebhookPayload
+from src.schemas import ModelsResponse, TasksResponse, TaskStatus, WebhookPayload
 
 
 logging.basicConfig(
@@ -23,6 +24,25 @@ async def health() -> dict:
     return {"status": "ok"}
 
 
+@app.get("/models", response_model=ModelsResponse)
+async def list_models() -> ModelsResponse:
+    provider = c.active_llm
+    return ModelsResponse(
+        provider=provider,
+        model=getattr(c, f"{provider.upper()}_MODEL"),
+    )
+
+
+@app.get("/tasks", response_model=TasksResponse)
+async def list_tasks() -> TasksResponse:
+    active = tasks.snapshot()
+    return TasksResponse(
+        running=bool(active),
+        count=len(active),
+        tasks={k: TaskStatus(**v) for k, v in active.items()},
+    )
+
+
 @app.post("/ingest", status_code=202)
 async def ingest(
     payload: WebhookPayload,
@@ -30,7 +50,9 @@ async def ingest(
     airtable: AirtableDep,
     parser: ParserDep,
 ) -> dict:
-    background_tasks.add_task(run_ingest, payload.record_id, airtable, parser, payload.model)
+    background_tasks.add_task(
+        run_ingest, payload.record_id, airtable, parser, payload.model
+    )
     return {"status": "accepted", "record_id": payload.record_id}
 
 
@@ -49,4 +71,6 @@ async def generate(
 
 
 def main() -> None:
-    uvicorn.run("src.api.server:app", host=c.FASTAPI_HOST, port=c.FASTAPI_PORT, reload=True)
+    uvicorn.run(
+        "src.api.server:app", host=c.FASTAPI_HOST, port=c.FASTAPI_PORT, reload=True
+    )
