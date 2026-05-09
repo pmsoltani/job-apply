@@ -1,21 +1,30 @@
 import json
 from pathlib import Path
+from typing import Self
 
 from pydantic import Field, computed_field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-class BaseConfig(BaseSettings):
+class Configs(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env", env_file_encoding="utf-8", extra="ignore"
     )
 
+    # --- Paths ---
     BASE_DIR: Path = Path(__file__).parent.parent
     CV_DIR: Path = BASE_DIR.parent.parent / "cv"
-    CLASSIC_CV_DIR: Path = CV_DIR / "classic"
-    MODERN_CV_DIR: Path = CV_DIR / "modern"
-    COVER_LETTER_DIR: Path = CV_DIR / "letter"
+    CONTEXT_DIR: Path = BASE_DIR / "context"
+    PROMPTS_DIR: Path = BASE_DIR / "prompts"
+    PARSER_PROMPT_FILE: Path = PROMPTS_DIR / "parser_prompt.md"
+    GENERATOR_PROMPT_FILE: Path = PROMPTS_DIR / "generator_prompt.md"
 
+    @computed_field
+    @property
+    def context_files(self) -> list[Path]:
+        return sorted(self.CONTEXT_DIR.glob("*.md"))
+
+    # --- Personal info ---
     FIRST_NAME: str = Field(...)
     LAST_NAME: str = Field(...)
     address: str = Field(...)
@@ -23,39 +32,33 @@ class BaseConfig(BaseSettings):
     @computed_field
     @property
     def full_name(self) -> str:
-        if not self.FIRST_NAME or not self.LAST_NAME:
-            raise ValueError("FIRST_NAME and/or LAST_NAME not set!")
         return f"{self.FIRST_NAME} {self.LAST_NAME}"
 
+    # --- FastAPI ---
     FASTAPI_HOST: str = "0.0.0.0"
     FASTAPI_PORT: int = 8000
 
+    # --- Jina ---
     JINA_BASE_URL: str = "https://r.jina.ai"
     TIMEOUT_SECONDS: int = 60
 
-
-class AirtableConfig(BaseConfig):
+    # --- Airtable ---
     AIRTABLE_PAT: str = Field(...)
     AIRTABLE_BASE_ID: str = Field(...)
-
     CONTENT_BASE_URL: str = "https://content.airtable.com"
+    AIRTABLE_SCHEMA_FILE: Path = BASE_DIR / "airtable_schema.json"
 
-    SCHEMA_FILE: Path = Field(
-        default_factory=lambda d: d["BASE_DIR"] / "airtable_schema.json"
-    )
-    SCHEMA: dict[str, dict] = Field(
-        default_factory=lambda d: json.loads(d["SCHEMA_FILE"].read_text())
-    )
+    @computed_field
+    @property
+    def tables(self) -> dict[str, str]:
+        return json.loads(self.AIRTABLE_SCHEMA_FILE.read_text())["tables"]
 
-    tables: dict[str, str] = Field(default_factory=lambda d: d["SCHEMA"]["tables"])
-    fields: dict[str, dict[str, str]] = Field(
-        default_factory=lambda d: d["SCHEMA"]["fields"]
-    )
+    @computed_field
+    @property
+    def fields(self) -> dict[str, dict[str, str]]:
+        return json.loads(self.AIRTABLE_SCHEMA_FILE.read_text())["fields"]
 
-
-class LLMConfig(BaseConfig):
-    LLMS: list[str] = ["anthropic", "gemini", "openai"]
-
+    # --- LLM ---
     ANTHROPIC_API_KEY: str | None = None
     ANTHROPIC_MODEL: str | None = None
 
@@ -68,47 +71,20 @@ class LLMConfig(BaseConfig):
     MAX_TOKENS_PARSER: int = 2048
     MAX_TOKENS_GENERATOR: int = 4096
 
-    CONTEXT_DIR: Path = Field(default_factory=lambda d: d["BASE_DIR"] / "context")
-    PROMPTS_DIR: Path = Field(default_factory=lambda d: d["BASE_DIR"] / "prompts")
-
-    @property
-    def context_files(self) -> list[Path]:
-        return sorted(self.CONTEXT_DIR.glob("*.md"))
-
-    PARSER_PROMPT_FILE: Path = Field(
-        default_factory=lambda d: d["PROMPTS_DIR"] / "parser_prompt.md"
-    )
-    GENERATOR_PROMPT_FILE: Path = Field(
-        default_factory=lambda d: d["PROMPTS_DIR"] / "generator_prompt.md"
-    )
-
-    def _is_available(self, llm: str) -> bool:
-        api_key = f"{llm.upper()}_API_KEY"
-        model = f"{llm.upper()}_MODEL"
-        return bool(getattr(self, api_key)) and bool(getattr(self, model))
-
     @computed_field
     @property
-    def available(self) -> list[str]:
-        return [llm for llm in self.LLMS if self._is_available(llm)]
-
-    @computed_field
-    @property
-    def generator_model(self) -> str:
-        return self.available[0]
-
-    @computed_field
-    @property
-    def parser_model(self) -> str:
-        return self.available[0]
+    def active_llm(self) -> str:
+        for provider in ("anthropic", "gemini", "openai"):
+            api_key = getattr(self, f"{provider.upper()}_API_KEY")
+            model = getattr(self, f"{provider.upper()}_MODEL")
+            if api_key and model:
+                return provider
+        raise ValueError("No LLM configured. Set *_API_KEY and *_MODEL in .env")
 
     @model_validator(mode="after")
-    def validate_llms(self):
-        if not self.available:
-            raise ValueError("No configured LLMs found!")
+    def _validate_llm(self) -> Self:
+        _ = self.active_llm
         return self
 
 
-bc = BaseConfig()
-ac = AirtableConfig()
-lc = LLMConfig()
+c = Configs()
