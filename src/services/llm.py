@@ -13,23 +13,23 @@ logger = logging.getLogger(__name__)
 class LLMService:
     """Base class: builds the correct pydantic-ai model from Configs, with explicit API key."""
 
-    def _build_model(self):
+    def _build_model(self, model_name: str | None = None):
         provider = c.active_llm
         api_key: str = getattr(c, f"{provider.upper()}_API_KEY")
-        model_name: str = getattr(c, f"{provider.upper()}_MODEL")
+        name: str = model_name or getattr(c, f"{provider.upper()}_MODEL")
 
         if provider == "anthropic":
             from pydantic_ai.models.anthropic import AnthropicModel
 
-            return AnthropicModel(model_name, api_key=api_key)
+            return AnthropicModel(name, api_key=api_key)
         if provider == "gemini":
             from pydantic_ai.models.google import GoogleModel
 
-            return GoogleModel(model_name, api_key=api_key)
+            return GoogleModel(name, api_key=api_key)
         if provider == "openai":
             from pydantic_ai.models.openai import OpenAIChatModel
 
-            return OpenAIChatModel(model_name, api_key=api_key)
+            return OpenAIChatModel(name, api_key=api_key)
         raise ValueError(f"Unsupported LLM provider: {provider}")
 
 
@@ -41,9 +41,10 @@ class ParserService(LLMService):
             model, output_type=JobData, system_prompt=prompt
         )
 
-    async def extract_job(self, text: str) -> JobData:
+    async def extract_job(self, text: str, model: str | None = None) -> JobData:
         result = await self._agent.run(
             text,
+            model=self._build_model(model) if model else None,
             model_settings=ModelSettings(max_tokens=c.MAX_TOKENS_PARSER),
             output_type=JobData,
         )
@@ -85,9 +86,12 @@ class GeneratorService(LLMService):
             )
         return ModelSettings(max_tokens=c.MAX_TOKENS_GENERATOR)
 
-    async def generate_documents(self, job_prompt: str) -> GeneratedContent:
+    async def generate_documents(
+        self, job_prompt: str, model: str | None = None
+    ) -> GeneratedContent:
         result = await self._agent.run(
             job_prompt,
+            model=self._build_model(model) if model else None,
             model_settings=self._model_settings(),
             output_type=GeneratedContent,
         )
