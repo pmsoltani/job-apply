@@ -3,13 +3,10 @@ import logging
 import uvicorn
 from fastapi import BackgroundTasks, FastAPI
 
-from src.airtable_client import AirtableClient
-from src.configs import ac, bc
+from src.configs import c
 from src.fetcher import clean_markdown, fetch_url
-from src.generator import generate_documents
-from src.parser import extract_job
 from src.schemas import LetterData, WebhookPayload
-from src.typst_builder import build_cover_letter, build_cv
+from src.services import AirtableService, GeneratorService, ParserService, TypstService
 
 
 logging.basicConfig(
@@ -19,6 +16,11 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="job-apply")
+
+# Service singletons — instantiated once at startup
+_parser = ParserService()
+_generator = GeneratorService()
+_typst = TypstService()
 
 
 # ---------------------------------------------------------------------------
@@ -37,18 +39,17 @@ async def health() -> dict:
 
 
 async def _run_ingest(record_id: str) -> None:
-    at = AirtableClient()
-    f = ac.fields
+    airtable_service = AirtableService()
+    f = c.fields
 
     try:
-        record = at.get_job(record_id)
+        record = airtable_service.get_job(record_id)
         fields = record.get("fields", {})
 
         ad_url: str = fields.get(f["jobs"]["ad"], "")
         notes: str = fields.get(f["jobs"]["notes"], "")
 
         if notes.strip():
-            # User pasted the description manually — use it directly
             source_text = clean_markdown(notes)
         elif ad_url.strip():
             raw = await fetch_url(ad_url)
@@ -59,27 +60,25 @@ async def _run_ingest(record_id: str) -> None:
             )
             return
 
-        job = await extract_job(source_text)
+        job = await _parser.extract_job(source_text)
 
-        # Upsert Company
-        company_id = at.find_or_create_company(job.company)
-
-        # Upsert Contact (if found)
+        company_id = airtable_service.find_or_create_company(job.company)
         contact_id = None
         if job.contact:
-            contact_id = at.find_or_create_contact(job.contact, company_id=company_id)
+            contact_id = airtable_service.find_or_create_contact(
+                job.contact, company_id=company_id
+            )
 
-        # Update the Jobs record
         update: dict = {
-            f["jobs"]["title"]: job.job_title,
-            f["jobs"]["notes"]: job.job_description,
+            f["jobs"]["job"]: job.job,
+            f["jobs"]["notes"]: job.notes,
             f["jobs"]["company"]: [company_id],
         }
         if contact_id:
             update[f["jobs"]["recipient"]] = [contact_id]
 
-        at.update_job(record_id, update)
-        logger.info("[ingest %s] Done. Job: %s", record_id, job.job_title)
+        airtable_service.update_job(record_id, update)
+        logger.info("[ingest %s] Done. Job: %s", record_id, job.job)
 
     except Exception:
         logger.exception("[ingest %s] Pipeline 1 failed.", record_id)
@@ -97,11 +96,11 @@ async def ingest(payload: WebhookPayload, background_tasks: BackgroundTasks) -> 
 
 
 async def _run_generate(record_id: str) -> None:
-    at = AirtableClient()
-    f = ac.fields
+    airtable_service = AirtableService()
+    f = c.fields
 
     try:
-        record = at.get_job(record_id)
+        record = airtable_service.get_job(record_id)
         fields = record.get("fields", {})
 
         job_prompt: str = fields.get(f["jobs"]["prompt"], "")
@@ -109,7 +108,7 @@ async def _run_generate(record_id: str) -> None:
             logger.error("[generate %s] Prompt field is empty.", record_id)
             return
 
-        job_title: str = fields.get(f["jobs"]["title"], "Position")
+        job_title: str = fields.get(f["jobs"]["job"], "Position")
 
         # Resolve company address from the linked Company record
         to_address = ""
@@ -120,7 +119,7 @@ async def _run_generate(record_id: str) -> None:
                 if isinstance(company_links[0], str)
                 else company_links[0]["id"]
             )
-            company_record = at.get_company(company_id)
+            company_record = airtable_service.get_company(company_id)
             to_address = company_record.get("fields", {}).get(
                 f["companies"]["address"], ""
             )
@@ -134,7 +133,7 @@ async def _run_generate(record_id: str) -> None:
                 if isinstance(recipient_links[0], str)
                 else recipient_links[0]["id"]
             )
-            contact_record = at.contacts.get(contact_id)
+            contact_record = airtable_service.contacts.get(contact_id)
             contact_fields = contact_record.get("fields", {})
             cf = f["contacts"]
             parts = [
@@ -144,23 +143,24 @@ async def _run_generate(record_id: str) -> None:
             ]
             to_name = " ".join(p for p in parts if p).strip() or "Hiring Manager"
 
-        # LLM generation
-        content = await generate_documents(job_prompt)
+        content = await _generator.generate_documents(job_prompt)
 
-        # Build cover letter PDF
         letter_data = LetterData(
             to=to_name,
             to_address=to_address,
             subject=job_title,
             body=content.cover_letter_body,
         )
-        letter_pdf = build_cover_letter(letter_data)
-        cv_pdf = build_cv(content.profile_intro)
+        letter_pdf = _typst.build_cover_letter(letter_data)
+        cv_pdf = _typst.build_cv(content.profile_intro)
 
-        # Upload both PDFs to Airtable
         docs_field = f["jobs"]["docs"]
-        await at.upload_attachment(record_id, docs_field, "letter.pdf", letter_pdf)
-        await at.upload_attachment(record_id, docs_field, "cv.pdf", cv_pdf)
+        await airtable_service.upload_attachment(
+            record_id, docs_field, "letter.pdf", letter_pdf
+        )
+        await airtable_service.upload_attachment(
+            record_id, docs_field, "cv.pdf", cv_pdf
+        )
 
         logger.info("[generate %s] Done.", record_id)
 
@@ -180,6 +180,4 @@ async def generate(payload: WebhookPayload, background_tasks: BackgroundTasks) -
 
 
 def main() -> None:
-    uvicorn.run(
-        "src.server:app", host=bc.FASTAPI_HOST, port=bc.FASTAPI_PORT, reload=True
-    )
+    uvicorn.run("src.server:app", host=c.FASTAPI_HOST, port=c.FASTAPI_PORT, reload=True)
