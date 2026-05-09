@@ -1,5 +1,6 @@
 import logging
 
+from src import tasks
 from src.configs import c
 from src.schemas import LetterData
 from src.services import AirtableService, GeneratorService, ParserService, TypstService
@@ -15,6 +16,8 @@ async def run_ingest(
     parser: ParserService,
     model: str | None = None,
 ) -> None:
+    task_id = f"ingest:{record_id}"
+    tasks.register(task_id, f"Parsing job posting ({record_id})")
     f = c.fields
     try:
         record = airtable.get_job(record_id)
@@ -33,6 +36,7 @@ async def run_ingest(
             return
 
         job = await parser.extract_job(source_text, model=model)
+        tasks.register(task_id, f"Saving: {job.job} @ {job.company.name}")
 
         company_id = airtable.find_or_create_company(job.company)
         contact_id = None
@@ -52,6 +56,8 @@ async def run_ingest(
 
     except Exception:
         logger.exception("[ingest %s] Pipeline 1 failed.", record_id)
+    finally:
+        tasks.unregister(task_id)
 
 
 async def run_generate(
@@ -61,6 +67,8 @@ async def run_generate(
     typst: TypstService,
     model: str | None = None,
 ) -> None:
+    task_id = f"generate:{record_id}"
+    tasks.register(task_id, f"Generating documents ({record_id})")
     f = c.fields
     try:
         record = airtable.get_job(record_id)
@@ -71,7 +79,8 @@ async def run_generate(
             logger.error("[generate %s] Prompt field is empty.", record_id)
             return
 
-        job_title: str = fields.get(f["jobs"]["job"], "Position")
+        job_title: str = fields.get(f["jobs"]["job"], record_id)
+        tasks.register(task_id, f"Generating documents: {job_title}")
 
         to_address = ""
         company_links: list = fields.get(f["jobs"]["company"], [])
@@ -104,8 +113,10 @@ async def run_generate(
             ]
             to_name = " ".join(p for p in parts if p).strip() or "Hiring Manager"
 
+        tasks.register(task_id, f"Writing cover letter: {job_title}")
         content = await generator.generate_documents(job_prompt, model=model)
 
+        tasks.register(task_id, f"Compiling PDFs: {job_title}")
         letter_data = LetterData(
             to=to_name,
             to_address=to_address,
@@ -115,6 +126,7 @@ async def run_generate(
         letter_pdf = typst.build_cover_letter(letter_data)
         cv_pdf = typst.build_cv(content.profile_intro)
 
+        tasks.register(task_id, f"Uploading PDFs: {job_title}")
         docs_field = f["jobs"]["docs"]
         await airtable.upload_attachment(record_id, docs_field, "letter.pdf", letter_pdf)
         await airtable.upload_attachment(record_id, docs_field, "cv.pdf", cv_pdf)
@@ -123,3 +135,5 @@ async def run_generate(
 
     except Exception:
         logger.exception("[generate %s] Pipeline 2 failed.", record_id)
+    finally:
+        tasks.unregister(task_id)
