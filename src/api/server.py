@@ -3,8 +3,8 @@ import logging
 import uvicorn
 from fastapi import BackgroundTasks, FastAPI
 
+from src.api.dependencies import AirtableDep, GeneratorDep, ParserDep, TypstDep
 from src.configs import c
-from src.dependencies import AirtableDep, GeneratorDep, ParserDep, TypstDep
 from src.pipelines import run_generate, run_ingest
 from src.schemas import WebhookPayload
 
@@ -30,7 +30,7 @@ async def ingest(
     airtable: AirtableDep,
     parser: ParserDep,
 ) -> dict:
-    background_tasks.add_task(run_ingest, payload.record_id, airtable, parser)
+    background_tasks.add_task(run_ingest, payload.record_id, airtable, parser, payload.model)
     return {"status": "accepted", "record_id": payload.record_id}
 
 
@@ -42,9 +42,11 @@ async def generate(
     generator: GeneratorDep,
     typst: TypstDep,
 ) -> dict:
-    background_tasks.add_task(run_generate, payload.record_id, airtable, generator, typst)
+    background_tasks.add_task(
+        run_generate, payload.record_id, airtable, generator, typst, payload.model
+    )
     return {"status": "accepted", "record_id": payload.record_id}
 
 
 def main() -> None:
-    uvicorn.run("src.server:app", host=c.FASTAPI_HOST, port=c.FASTAPI_PORT, reload=True)
+    uvicorn.run("src.api.server:app", host=c.FASTAPI_HOST, port=c.FASTAPI_PORT, reload=True)
