@@ -2,14 +2,14 @@ import re
 
 import aiohttp
 
-from src.configs import bc
+from src.configs import c
 
 
 async def fetch_url(url: str) -> str:
     """Fetch a URL via Jina Reader and return raw markdown."""
-    timeout = aiohttp.ClientTimeout(total=bc.TIMEOUT_SECONDS)
+    timeout = aiohttp.ClientTimeout(total=c.TIMEOUT_SECONDS)
     async with aiohttp.ClientSession() as session:
-        full_url = f"{bc.JINA_BASE_URL}/{url}"
+        full_url = f"{c.JINA_BASE_URL}/{url}"
         async with session.get(full_url, timeout=timeout) as response:
             response.raise_for_status()
             return await response.text()
