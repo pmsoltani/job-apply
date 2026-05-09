@@ -1,0 +1,36 @@
+[project]
+name = "job-apply"
+version = "0.1.0"
+description = "Job application automation: parse job postings and generate tailored cover letters + CV PDFs"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "aiohttp>=3.13.5",
+    "fastapi>=0.136.1",
+    "pyairtable>=3.3.0",
+    "pydantic>=2.13.4",
+    "pydantic-ai-slim[anthropic,google,openai]>=1.93.0",
+    "pydantic-settings>=2.14.1",
+    "python-dotenv>=1.2.2",
+    "pyyaml>=6.0.3",
+    "uvicorn[standard]>=0.46.0",
+]
+
+[tool.ruff.lint]
+extend-select = ["I", "RUF022"]
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+lines-after-imports = 2
+
+[tool.ty.rules]
+all = "warn"
+
+[dependency-groups]
+dev = ["devtools>=0.12.2"]
+
+[project.scripts]
+job-apply = "src.server:main"
+
+[tool.uv]
+package = true

@@ -1,0 +1,40 @@
+{
+  "tables": {
+    "jobs": "Jobs",
+    "companies": "Companies",
+    "contacts": "Contacts"
+  },
+  "fields": {
+    "jobs": {
+      "job": "Job",
+      "company": "Company",
+      "ad": "AD",
+      "docs": "Docs",
+      "notes": "Notes",
+      "status": "Status",
+      "apply": "Apply",
+      "recipient": "Recipient",
+      "llm": "Gemini",
+      "prompt": "Prompt"
+    },
+    "companies": {
+      "company": "Company",
+      "url": "URL",
+      "notes": "Notes",
+      "address": "Address",
+      "docs": "Docs",
+      "country": "Country"
+    },
+    "contacts": {
+      "contact": "Contact",
+      "title": "Title",
+      "first": "First",
+      "last": "Last",
+      "role": "Role",
+      "email": "Email",
+      "phone": "Phone",
+      "url": "URL",
+      "company": "Company"
+    }
+  }
+}
