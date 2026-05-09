@@ -41,6 +41,22 @@ class GeneratedContent(BaseModel):
     profile_intro: str
 
 
+class ModelsResponse(BaseModel):
+    provider: str
+    model: str
+
+
+class TaskStatus(BaseModel):
+    description: str
+    started_at: str
+
+
+class TasksResponse(BaseModel):
+    running: bool
+    count: int
+    tasks: dict[str, TaskStatus]
+
+
 class LetterData(BaseModel):
     """Maps to letter/data.json consumed by the Typst cover letter template."""
 
