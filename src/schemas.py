@@ -1,9 +1,11 @@
-from enum import StrEnum
-from typing import Optional
+from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, HttpUrl
 
-from src.configs import bc
+from src.configs import c
+
+
+_DESC_COUNTRY = "ISO 3166-1 alpha-2 country code"
 
 
 class WebhookPayload(BaseModel):
@@ -12,23 +14,24 @@ class WebhookPayload(BaseModel):
 
 class CompanyData(BaseModel):
     name: str
-    url: Optional[str] = None
-    country: Optional[str] = None
+    url: HttpUrl | None = None
+    country: str | None = Field(None, pattern=r"^[A-Z]{2}$", description=_DESC_COUNTRY)
 
 
 class ContactData(BaseModel):
-    title: Optional[str] = None  # Mr | Ms | Dr | Prof
-    first: Optional[str] = None
-    last: Optional[str] = None
-    role: Optional[str] = None
-    email: Optional[str] = None
+    title: Literal["Mr", "Ms", "Dr", "Prof"] | None = None
+    first: str | None = None
+    last: str | None = None
+    role: str | None = None
+    email: str | None = None
+    url: HttpUrl | None = None
 
 
 class JobData(BaseModel):
-    job_title: str
-    job_description: str
+    job: str
+    notes: str
     company: CompanyData
-    contact: Optional[ContactData] = None
+    contact: ContactData | None = None
 
 
 class GeneratedContent(BaseModel):
@@ -39,9 +42,9 @@ class GeneratedContent(BaseModel):
 class LetterData(BaseModel):
     """Maps to letter/data.json consumed by the Typst cover letter template."""
 
-    date: str = ""  # empty string → template uses today
-    from_name: str = bc.full_name
-    from_address: str = bc.address  # empty string → template uses a default address
+    date: str = ""
+    from_name: str = c.full_name
+    from_address: str = c.address
     to: str = "Hiring Manager"
     to_address: str = ""
     subject: str = ""
@@ -59,96 +62,3 @@ class LetterData(BaseModel):
             "body": self.body,
             "closing": self.closing,
         }
-
-
-class FieldType(StrEnum):
-    """Airtable field types."""
-
-    SINGLE_TEXT = "single_text"
-    LONG_TEXT = "long_text"
-    ATTACHMENT = "attachment"
-    CHECKBOX = "checkbox"
-    SINGLE_SELECT = "single_select"
-    MULTIPLE_SELECT = "multiple_select"
-    DATE = "date"
-    PHONE = "phone"
-    EMAIL = "email"
-    URL = "url"
-    NUMBER = "number"
-    CURRENCY = "currency"
-    FORMULA = "formula"
-    LINKED = "linked"
-    LOOKUP = "lookup"
-    BUTTON = "button"
-
-
-class Col(BaseModel):
-    name: str
-    type: FieldType
-    note: str = ""
-
-
-class Table(BaseModel):
-    name: str
-    fields: dict[str, Col]
-
-
-_COMPANY = "Linked to Companies table"
-_AD = "URL of job ad"
-_STATUS = "Applied, Rejected, Interview, Accepted"
-_DATE = "Date applied"
-_RECIPIENT = "Link to Contacts, used in cover letter"
-_LLM = "Special notes for LLM about job to aid in cover letter generation"
-_CONTACT = "Formula: title + last"
-_TITLE = "Mr, Ms, Dr"
-_ADDRESS = "Address in separate lines used in cover letter"
-_COUNTRY = "ISO-3166-1 alpha-2 country code"
-
-
-class JobsTable(Table):
-    name: str = "Jobs"
-    fields: dict[str, Col] = Field(
-        default_factory=lambda: {
-            "job": Col(name="Job", type=FieldType.SINGLE_TEXT),
-            "company": Col(name="Company", type=FieldType.LINKED, note=_COMPANY),
-            "ad": Col(name="AD", type=FieldType.URL, note=_AD),
-            "docs": Col(name="Docs", type=FieldType.ATTACHMENT),
-            "notes": Col(name="Notes", type=FieldType.LONG_TEXT),
-            "status": Col(name="Status", type=FieldType.SINGLE_SELECT, note=_STATUS),
-            "apply": Col(name="Apply", type=FieldType.DATE, note=_DATE),
-            "recipient": Col(name="Recipient", type=FieldType.LINKED, note=_RECIPIENT),
-            "llm": Col(name="LLM Notes", type=FieldType.SINGLE_TEXT, note=_LLM),
-            "prompt": Col(name="Prompt", type=FieldType.FORMULA),
-        }
-    )
-
-
-class ContactsTable(Table):
-    name: str = "Contacts"
-    fields: dict[str, Col] = Field(
-        default_factory=lambda: {
-            "contact": Col(name="Contact", type=FieldType.FORMULA, note=_CONTACT),
-            "title": Col(name="Title", type=FieldType.SINGLE_SELECT, note=_TITLE),
-            "first": Col(name="First", type=FieldType.SINGLE_TEXT),
-            "last": Col(name="Last", type=FieldType.SINGLE_TEXT),
-            "role": Col(name="Role", type=FieldType.SINGLE_TEXT),
-            "email": Col(name="Email", type=FieldType.EMAIL),
-            "phone": Col(name="Phone", type=FieldType.PHONE),
-            "url": Col(name="URL", type=FieldType.URL),
-            "company": Col(name="Company", type=FieldType.LINKED, note=_COMPANY),
-        }
-    )
-
-
-class CompanyTable(Table):
-    name: str = "Companies"
-    fields: dict[str, Col] = Field(
-        default_factory=lambda: {
-            "company": Col(name="Company", type=FieldType.SINGLE_TEXT),
-            "url": Col(name="URL", type=FieldType.URL),
-            "notes": Col(name="Notes", type=FieldType.LONG_TEXT),
-            "address": Col(name="Address", type=FieldType.LONG_TEXT, note=_ADDRESS),
-            "docs": Col(name="Docs", type=FieldType.ATTACHMENT),
-            "country": Col(name="Country", type=FieldType.SINGLE_SELECT, note=_COUNTRY),
-        }
-    )
