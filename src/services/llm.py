@@ -1,9 +1,10 @@
 import logging
 
 from pydantic_ai import Agent
+from pydantic_ai.models import Model
 from pydantic_ai.settings import ModelSettings
 
-from src.configs import c
+from src.configs import LLMProvider, c
 from src.schemas import GeneratedContent, JobData
 
 
@@ -13,40 +14,43 @@ logger = logging.getLogger(__name__)
 class LLMService:
     """Base class: builds the correct pydantic-ai model from Configs, with explicit API key."""
 
-    def _build_model(self, model_name: str | None = None):
-        provider = c.active_llm
-        api_key: str = getattr(c, f"{provider.upper()}_API_KEY")
-        name: str = model_name or getattr(c, f"{provider.upper()}_MODEL")
-
-        if provider == "anthropic":
+    def _build_model(self, model_name: str | None = None) -> Model:
+        url = str(c.LLM_URL) if c.LLM_URL else None
+        model_name = model_name or c.LLM_MODEL
+        if c.LLM_PROVIDER == LLMProvider.ANTHROPIC:
             from pydantic_ai.models.anthropic import AnthropicModel
+            from pydantic_ai.providers.anthropic import AnthropicProvider
 
-            return AnthropicModel(name, api_key=api_key)
-        if provider == "gemini":
+            provider = AnthropicProvider(api_key=c.LLM_API_KEY, base_url=url)
+            return AnthropicModel(model_name, provider=provider)
+        if c.LLM_PROVIDER == LLMProvider.GEMINI:
             from pydantic_ai.models.google import GoogleModel
+            from pydantic_ai.providers.google import GoogleProvider
 
-            return GoogleModel(name, api_key=api_key)
-        if provider == "openai":
+            provider = GoogleProvider(api_key=c.LLM_API_KEY, base_url=url)
+            return GoogleModel(model_name, provider=provider)
+        if c.LLM_PROVIDER == LLMProvider.OPENAI:
             from pydantic_ai.models.openai import OpenAIChatModel
+            from pydantic_ai.providers.openai import OpenAIProvider
 
-            return OpenAIChatModel(name, api_key=api_key)
-        raise ValueError(f"Unsupported LLM provider: {provider}")
+            provider = OpenAIProvider(api_key=c.LLM_API_KEY, base_url=url)
+            return OpenAIChatModel(model_name, provider=provider)
+        raise ValueError(f"Unsupported LLM provider: {c.LLM_PROVIDER}")
 
 
 class ParserService(LLMService):
     def __init__(self) -> None:
         model = self._build_model()
         prompt = c.PARSER_PROMPT_FILE.read_text(encoding="utf-8")
-        self._agent: Agent[None, JobData] = Agent(
+        self._agent: Agent[None, JobData | str] = Agent(
             model, output_type=JobData, system_prompt=prompt
         )
 
-    async def extract_job(self, text: str, model: str | None = None) -> JobData:
+    async def extract_job_data(self, text: str, model: str | None = None) -> JobData:
         result = await self._agent.run(
             text,
             model=self._build_model(model) if model else None,
             model_settings=ModelSettings(max_tokens=c.MAX_TOKENS_PARSER),
-            output_type=JobData,
         )
         assert isinstance(result.output, JobData)
         logger.info(
@@ -60,7 +64,7 @@ class ParserService(LLMService):
 class GeneratorService(LLMService):
     def __init__(self) -> None:
         model = self._build_model()
-        self._agent: Agent[None, GeneratedContent] = Agent(
+        self._agent: Agent[None, GeneratedContent | str] = Agent(
             model, output_type=GeneratedContent, system_prompt=self._load_context()
         )
 
@@ -77,7 +81,7 @@ class GeneratorService(LLMService):
         return "\n".join(parts)
 
     def _model_settings(self) -> ModelSettings:
-        if c.active_llm == "anthropic":
+        if c.LLM_PROVIDER == LLMProvider.ANTHROPIC:
             from pydantic_ai.models.anthropic import AnthropicModelSettings
 
             return AnthropicModelSettings(
@@ -93,7 +97,6 @@ class GeneratorService(LLMService):
             job_prompt,
             model=self._build_model(model) if model else None,
             model_settings=self._model_settings(),
-            output_type=GeneratedContent,
         )
         assert isinstance(result.output, GeneratedContent)
         logger.info("Generated documents (usage: %s)", result.usage())
