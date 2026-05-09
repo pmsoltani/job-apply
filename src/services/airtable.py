@@ -25,11 +25,11 @@ class AirtableService:
     # Jobs
     # -------------------------------------------------------------------------
 
-    def get_job(self, record_id: str) -> RecordDict:
-        return self.jobs.get(record_id)
+    def get_job(self, job_id: str) -> RecordDict:
+        return self.jobs.get(job_id)
 
-    def update_job(self, record_id: str, fields: dict[str, Any]) -> RecordDict:
-        return self.jobs.update(record_id, fields)
+    def update_job(self, job_id: str, fields: dict[str, Any]) -> RecordDict:
+        return self.jobs.update(job_id, fields)
 
     # -------------------------------------------------------------------------
     # Companies — find-or-create
@@ -51,16 +51,14 @@ class AirtableService:
         logger.info("Created company: %s (%s)", data.name, record["id"])
         return record["id"]
 
-    def get_company(self, record_id: str) -> RecordDict:
-        return self.companies.get(record_id)
+    def get_company(self, company_id: str) -> RecordDict:
+        return self.companies.get(company_id)
 
     # -------------------------------------------------------------------------
     # Contacts — find-or-create
     # -------------------------------------------------------------------------
 
-    def find_or_create_contact(
-        self, data: ContactData, company_id: Optional[str] = None
-    ) -> Optional[str]:
+    def find_or_create_contact(self, data: ContactData, job_id: str) -> Optional[str]:
         f = c.fields["contacts"]
 
         if data.email:
@@ -85,8 +83,7 @@ class AirtableService:
         ):
             if getattr(data, attr):
                 new_fields[f[key]] = getattr(data, attr)
-        if company_id:
-            new_fields[f["company"]] = [company_id]
+        new_fields[f["jobs"]] = [job_id]
 
         record = self.contacts.create(new_fields)
         logger.info("Created contact: %s %s (%s)", data.first, data.last, record["id"])
