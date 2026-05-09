@@ -1,4 +1,4 @@
-from src.server import main
+from src.api import main
 
 
 if __name__ == "__main__":
