@@ -6,10 +6,12 @@ from src.configs import c
 
 
 _DESC_COUNTRY = "ISO 3166-1 alpha-2 country code"
+_DESC_MODEL = "Optional override for the configured LLM model"
 
 
 class WebhookPayload(BaseModel):
     record_id: str
+    model: str | None = Field(None, description=_DESC_MODEL)
 
 
 class CompanyData(BaseModel):
