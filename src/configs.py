@@ -1,9 +1,16 @@
 import json
+from enum import StrEnum
 from pathlib import Path
 from typing import Self
 
-from pydantic import Field, computed_field, model_validator
+from pydantic import Field, HttpUrl, computed_field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class LLMProvider(StrEnum):
+    ANTHROPIC = "anthropic"
+    GEMINI = "gemini"
+    OPENAI = "openai"
 
 
 class Configs(BaseSettings):
@@ -59,31 +66,18 @@ class Configs(BaseSettings):
         return json.loads(self.AIRTABLE_SCHEMA_FILE.read_text())["fields"]
 
     # --- LLM ---
-    ANTHROPIC_API_KEY: str | None = None
-    ANTHROPIC_MODEL: str | None = None
-
-    GEMINI_API_KEY: str | None = None
-    GEMINI_MODEL: str | None = None
-
-    OPENAI_API_KEY: str | None = None
-    OPENAI_MODEL: str | None = None
+    LLM_PROVIDER: LLMProvider = Field(...)
+    LLM_API_KEY: str = Field(...)
+    LLM_MODEL: str = Field(...)
+    LLM_URL: HttpUrl | None = None
 
     MAX_TOKENS_PARSER: int = 2048
     MAX_TOKENS_GENERATOR: int = 4096
 
-    @computed_field
-    @property
-    def active_llm(self) -> str:
-        for provider in ("anthropic", "gemini", "openai"):
-            api_key = getattr(self, f"{provider.upper()}_API_KEY")
-            model = getattr(self, f"{provider.upper()}_MODEL")
-            if api_key and model:
-                return provider
-        raise ValueError("No LLM configured. Set *_API_KEY and *_MODEL in .env")
-
     @model_validator(mode="after")
     def _validate_llm(self) -> Self:
-        _ = self.active_llm
+        if not all([self.LLM_PROVIDER, self.LLM_API_KEY, self.LLM_MODEL]):
+            raise ValueError("LLM_PROVIDER, LLM_API_KEY, and LLM_MODEL must be set")
         return self
 
 
