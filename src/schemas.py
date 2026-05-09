@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import BaseModel, Field, HttpUrl
+from pydantic import BaseModel, Field, HttpUrl, field_validator
 
 from src.configs import c
 
@@ -18,6 +18,13 @@ class CompanyData(BaseModel):
     name: str
     url: HttpUrl | None = None
     country: str | None = Field(None, pattern=r"^[A-Z]{2}$", description=_DESC_COUNTRY)
+
+    @field_validator("country", mode="after")
+    @classmethod
+    def normalize_country_codes(cls, v) -> str | None:
+        if v is None:
+            return v
+        return c.COUNTRY_CODE_MAPPING.get(v, v)
 
 
 class ContactData(BaseModel):

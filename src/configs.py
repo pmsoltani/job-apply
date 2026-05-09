@@ -7,6 +7,11 @@ from pydantic import Field, HttpUrl, computed_field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
+_COUNTRY_CODES = {
+    "GB": "UK",
+}
+
+
 class LLMProvider(StrEnum):
     ANTHROPIC = "anthropic"
     GEMINI = "gemini"
@@ -54,6 +59,8 @@ class Configs(BaseSettings):
     AIRTABLE_BASE_ID: str = Field(...)
     CONTENT_BASE_URL: str = "https://content.airtable.com"
     AIRTABLE_SCHEMA_FILE: Path = BASE_DIR / "airtable_schema.json"
+
+    COUNTRY_CODE_MAPPING: dict[str, str] = Field(default_factory=lambda: _COUNTRY_CODES)
 
     @computed_field
     @property
