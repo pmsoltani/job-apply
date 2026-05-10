@@ -11,7 +11,7 @@ from src.configs import c
 from src.schemas import CompanyData, ContactData
 
 
-logger = logging.getLogger(__name__)
+lg = logging.getLogger(c.APP_NAME)
 
 
 class AirtableService:
@@ -22,19 +22,11 @@ class AirtableService:
         self.companies = base.table(c.tables["companies"])
         self.contacts = base.table(c.tables["contacts"])
 
-    # -------------------------------------------------------------------------
-    # Jobs
-    # -------------------------------------------------------------------------
-
     def get_job(self, job_id: str) -> RecordDict:
         return self.jobs.get(job_id)
 
     def update_job(self, job_id: str, fields: dict[str, Any]) -> RecordDict:
         return self.jobs.update(job_id, fields)
-
-    # -------------------------------------------------------------------------
-    # Companies — find-or-create
-    # -------------------------------------------------------------------------
 
     def find_or_create_company(self, data: CompanyData) -> str:
         f = c.fields["companies"]
@@ -51,15 +43,11 @@ class AirtableService:
             new_fields[f["notes"]] = data.notes
 
         record = self.companies.create(new_fields)
-        logger.info("Created company: %s (%s)", data.name, record["id"])
+        lg.info("Created company: %s (%s)", data.name, record["id"])
         return record["id"]
 
     def get_company(self, company_id: str) -> RecordDict:
         return self.companies.get(company_id)
-
-    # -------------------------------------------------------------------------
-    # Contacts — find-or-create
-    # -------------------------------------------------------------------------
 
     def find_or_create_contact(self, data: ContactData, job_id: str) -> Optional[str]:
         f = c.fields["contacts"]
@@ -90,12 +78,8 @@ class AirtableService:
         new_fields[f["jobs"]] = [job_id]
 
         record = self.contacts.create(new_fields)
-        logger.info("Created contact: %s %s (%s)", data.first, data.last, record["id"])
+        lg.info("Created contact: %s %s (%s)", data.first, data.last, record["id"])
         return record["id"]
-
-    # -------------------------------------------------------------------------
-    # Attachments
-    # -------------------------------------------------------------------------
 
     async def upload_attachment(
         self,
@@ -126,4 +110,4 @@ class AirtableService:
             async with session.post(url, headers=headers, json=payload) as response:
                 response.raise_for_status()
 
-        logger.info("Uploaded %s to %s / %s", filename, record_id, field_name)
+        lg.info("Uploaded %s to %s / %s", filename, record_id, field_name)

@@ -8,7 +8,7 @@ from src.configs import LLMProvider, c
 from src.schemas import GeneratedContent, JobData
 
 
-logger = logging.getLogger(__name__)
+lg = logging.getLogger(c.APP_NAME)
 
 
 class LLMService:
@@ -53,11 +53,7 @@ class ParserService(LLMService):
             model_settings=ModelSettings(max_tokens=c.MAX_TOKENS_PARSER),
         )
         assert isinstance(result.output, JobData)
-        logger.info(
-            "Extracted job: %s @ %s",
-            result.output.job,
-            result.output.company.name,
-        )
+        lg.info("Extracted job: %s @ %s", result.output.job, result.output.company.name)
         return result.output
 
 
@@ -75,7 +71,7 @@ class GeneratorService(LLMService):
         ]
         for path in c.context_files:
             if not path.exists():
-                logger.warning("Context file not found, skipping: %s", path)
+                lg.warning("Context file not found, skipping: %s", path)
                 continue
             parts.append(f"\n## {path.name}\n\n{path.read_text(encoding='utf-8')}")
         return "\n".join(parts)
@@ -99,5 +95,5 @@ class GeneratorService(LLMService):
             model_settings=self._model_settings(),
         )
         assert isinstance(result.output, GeneratedContent)
-        logger.info("Generated documents (usage: %s)", result.usage())
+        lg.info("Generated documents (usage: %s)", result.usage())
         return result.output

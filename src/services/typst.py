@@ -8,7 +8,7 @@ from src.configs import CVStyle, c
 from src.schemas import LetterData
 
 
-logger = logging.getLogger(__name__)
+lg = logging.getLogger(c.APP_NAME)
 
 
 class TypstService:
@@ -28,7 +28,7 @@ class TypstService:
         result = subprocess.run(cmd, capture_output=True, text=True)
         if result.returncode != 0:
             raise RuntimeError(f"typst compile failed:\n{result.stderr}")
-        logger.info("Compiled %s → %s", source.name, output.name)
+        lg.info("Compiled %s → %s", source.name, output.name)
 
     def build_cover_letter(self, letter_data: LetterData) -> bytes:
         letter_dir = c.CV_DIR / "letter"

@@ -7,7 +7,7 @@ from src.services import AirtableService, GeneratorService, ParserService, Typst
 from src.utils import clean_markdown, fetch_url
 
 
-logger = logging.getLogger(__name__)
+lg = logging.getLogger(c.APP_NAME)
 
 
 async def run_parse(
@@ -32,7 +32,7 @@ async def run_parse(
             raw = await fetch_url(f"{c.JINA_BASE_URL}/{ad_url}", c.TIMEOUT_SECONDS)
             source_text = clean_markdown(raw)
         else:
-            logger.error("[parse %s] Neither AD URL nor Notes is populated.", job_id)
+            lg.error("[parse %s] Neither AD URL nor Notes is populated.", job_id)
             return
 
         job = await parser.extract_job_data(source_text, model=model)
@@ -52,10 +52,10 @@ async def run_parse(
             update[f["jobs"]["recipient"]] = [contact_id]
 
         airtable.update_job(job_id, update)
-        logger.info("[parse %s] Done. Job: %s", job_id, job.job)
+        lg.info("[parse %s] Done. Job: %s", job_id, job.job)
 
     except Exception:
-        logger.exception("[parse %s] Pipeline 1 failed.", job_id)
+        lg.exception("[parse %s] Pipeline 1 failed.", job_id)
     finally:
         tasks.unregister(task_id)
 
@@ -75,7 +75,7 @@ async def run_generate(
 
         job_prompt: str = fields.get(f["jobs"]["prompt"], "")
         if not job_prompt.strip():
-            logger.error("[generate %s] Prompt field is empty.", job_id)
+            lg.error("[generate %s] Prompt field is empty.", job_id)
             return
 
         job_title: str = fields.get(f["jobs"]["job"], job_id)
@@ -92,10 +92,10 @@ async def run_generate(
             },
         )
 
-        logger.info("[generate %s] Done.", job_id)
+        lg.info("[generate %s] Done.", job_id)
 
     except Exception:
-        logger.exception("[generate %s] Pipeline 2 failed.", job_id)
+        lg.exception("[generate %s] Pipeline 2 failed.", job_id)
     finally:
         tasks.unregister(task_id)
 
@@ -116,9 +116,7 @@ async def run_compile(
         letter_content: str = fields.get(f["jobs"]["letter_content"], "")
         cv_content: str = fields.get(f["jobs"]["cv_content"], "")
         if not letter_content.strip():
-            logger.error(
-                "[compile %s] Letter Content is empty. Run /generate first.", job_id
-            )
+            lg.error("[compile %s] Empty letter Content! Run /generate first.", job_id)
             return
 
         job_title: str = fields.get(f["jobs"]["job"], job_id)
@@ -133,13 +131,10 @@ async def run_compile(
                 else company_links[0]["id"]
             )
             company_data = airtable.get_company(company_id).get("fields", {})
-            company_name = company_data.get(f["companies"]["company"])
             to_address = company_data.get(f["companies"]["address"], "")
             if not to_address.strip():
-                logger.warning(
-                    f"[compile %s] Company '{company_name}' has no address!",
-                    job_id,
-                )
+                c_name = company_data.get(f["companies"]["company"])
+                lg.warning("[compile %s] Company '%s' has no address!", job_id, c_name)
 
         to_name = "Hiring Manager"
         recipient_links: list = fields.get(f["jobs"]["recipient"], [])
@@ -172,9 +167,9 @@ async def run_compile(
         await airtable.upload_attachment(job_id, docs_field, "letter.pdf", letter_pdf)
         await airtable.upload_attachment(job_id, docs_field, "cv.pdf", cv_pdf)
 
-        logger.info("[compile %s] Done.", job_id)
+        lg.info("[compile %s] Done.", job_id)
 
     except Exception:
-        logger.exception("[compile %s] Pipeline 3 failed.", job_id)
+        lg.exception("[compile %s] Pipeline 3 failed.", job_id)
     finally:
         tasks.unregister(task_id)
