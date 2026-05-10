@@ -10,13 +10,13 @@ from src.utils import clean_markdown, fetch_url
 logger = logging.getLogger(__name__)
 
 
-async def run_ingest(
+async def run_parse(
     job_id: str,
     airtable: AirtableService,
     parser: ParserService,
     model: str | None = None,
 ) -> None:
-    task_id = f"ingest:{job_id}"
+    task_id = f"parse:{job_id}"
     tasks.register(task_id, f"Parsing job posting ({job_id})")
     f = c.fields
     try:
@@ -32,7 +32,7 @@ async def run_ingest(
             raw = await fetch_url(f"{c.JINA_BASE_URL}/{ad_url}", c.TIMEOUT_SECONDS)
             source_text = clean_markdown(raw)
         else:
-            logger.error("[ingest %s] Neither AD URL nor Notes is populated.", job_id)
+            logger.error("[parse %s] Neither AD URL nor Notes is populated.", job_id)
             return
 
         job = await parser.extract_job_data(source_text, model=model)
@@ -52,10 +52,10 @@ async def run_ingest(
             update[f["jobs"]["recipient"]] = [contact_id]
 
         airtable.update_job(job_id, update)
-        logger.info("[ingest %s] Done. Job: %s", job_id, job.job)
+        logger.info("[parse %s] Done. Job: %s", job_id, job.job)
 
     except Exception:
-        logger.exception("[ingest %s] Pipeline 1 failed.", job_id)
+        logger.exception("[parse %s] Pipeline 1 failed.", job_id)
     finally:
         tasks.unregister(task_id)
 

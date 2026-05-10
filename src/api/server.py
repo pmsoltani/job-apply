@@ -6,7 +6,7 @@ from fastapi import BackgroundTasks, FastAPI
 from src import tasks
 from src.api.dependencies import AirtableDep, GeneratorDep, ParserDep, TypstDep
 from src.configs import CVStyle, c
-from src.pipelines import run_compile, run_generate, run_ingest
+from src.pipelines import run_compile, run_generate, run_parse
 from src.schemas import ModelsResponse, TasksResponse, TaskStatus, WebhookPayload
 
 
@@ -39,15 +39,15 @@ async def list_tasks() -> TasksResponse:
     )
 
 
-@app.post("/ingest", status_code=202)
-async def ingest(
+@app.post("/parse", status_code=202)
+async def parse(
     payload: WebhookPayload,
     background_tasks: BackgroundTasks,
     airtable: AirtableDep,
     parser: ParserDep,
 ) -> dict:
     background_tasks.add_task(
-        run_ingest, payload.record_id, airtable, parser, payload.model
+        run_parse, payload.record_id, airtable, parser, payload.model
     )
     return {"status": "accepted", "record_id": payload.record_id}
 
