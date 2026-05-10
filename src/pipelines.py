@@ -11,16 +11,16 @@ logger = logging.getLogger(__name__)
 
 
 async def run_ingest(
-    record_id: str,
+    job_id: str,
     airtable: AirtableService,
     parser: ParserService,
     model: str | None = None,
 ) -> None:
-    task_id = f"ingest:{record_id}"
-    tasks.register(task_id, f"Parsing job posting ({record_id})")
+    task_id = f"ingest:{job_id}"
+    tasks.register(task_id, f"Parsing job posting ({job_id})")
     f = c.fields
     try:
-        record = airtable.get_job(record_id)
+        record = airtable.get_job(job_id)
         fields = record.get("fields", {})
 
         ad_url: str = fields.get(f["jobs"]["ad"], "")
@@ -32,16 +32,16 @@ async def run_ingest(
             raw = await fetch_url(f"{c.JINA_BASE_URL}/{ad_url}", c.TIMEOUT_SECONDS)
             source_text = clean_markdown(raw)
         else:
-            logger.error("[ingest %s] Neither AD URL nor Notes is populated.", record_id)
+            logger.error("[ingest %s] Neither AD URL nor Notes is populated.", job_id)
             return
 
-        job = await parser.extract_job(source_text, model=model)
+        job = await parser.extract_job_data(source_text, model=model)
         tasks.register(task_id, f"Saving: {job.job} @ {job.company.name}")
 
         company_id = airtable.find_or_create_company(job.company)
         contact_id = None
         if job.contact:
-            contact_id = airtable.find_or_create_contact(job.contact, company_id=company_id)
+            contact_id = airtable.find_or_create_contact(job.contact, job_id=job_id)
 
         update: dict = {
             f["jobs"]["job"]: job.job,
@@ -51,35 +51,35 @@ async def run_ingest(
         if contact_id:
             update[f["jobs"]["recipient"]] = [contact_id]
 
-        airtable.update_job(record_id, update)
-        logger.info("[ingest %s] Done. Job: %s", record_id, job.job)
+        airtable.update_job(job_id, update)
+        logger.info("[ingest %s] Done. Job: %s", job_id, job.job)
 
     except Exception:
-        logger.exception("[ingest %s] Pipeline 1 failed.", record_id)
+        logger.exception("[ingest %s] Pipeline 1 failed.", job_id)
     finally:
         tasks.unregister(task_id)
 
 
 async def run_generate(
-    record_id: str,
+    job_id: str,
     airtable: AirtableService,
     generator: GeneratorService,
     typst: TypstService,
     model: str | None = None,
 ) -> None:
-    task_id = f"generate:{record_id}"
-    tasks.register(task_id, f"Generating documents ({record_id})")
+    task_id = f"generate:{job_id}"
+    tasks.register(task_id, f"Generating documents ({job_id})")
     f = c.fields
     try:
-        record = airtable.get_job(record_id)
+        record = airtable.get_job(job_id)
         fields = record.get("fields", {})
 
         job_prompt: str = fields.get(f["jobs"]["prompt"], "")
         if not job_prompt.strip():
-            logger.error("[generate %s] Prompt field is empty.", record_id)
+            logger.error("[generate %s] Prompt field is empty.", job_id)
             return
 
-        job_title: str = fields.get(f["jobs"]["job"], record_id)
+        job_title: str = fields.get(f["jobs"]["job"], job_id)
         tasks.register(task_id, f"Generating documents: {job_title}")
 
         to_address = ""
@@ -128,12 +128,12 @@ async def run_generate(
 
         tasks.register(task_id, f"Uploading PDFs: {job_title}")
         docs_field = f["jobs"]["docs"]
-        await airtable.upload_attachment(record_id, docs_field, "letter.pdf", letter_pdf)
-        await airtable.upload_attachment(record_id, docs_field, "cv.pdf", cv_pdf)
+        await airtable.upload_attachment(job_id, docs_field, "letter.pdf", letter_pdf)
+        await airtable.upload_attachment(job_id, docs_field, "cv.pdf", cv_pdf)
 
-        logger.info("[generate %s] Done.", record_id)
+        logger.info("[generate %s] Done.", job_id)
 
     except Exception:
-        logger.exception("[generate %s] Pipeline 2 failed.", record_id)
+        logger.exception("[generate %s] Pipeline 2 failed.", job_id)
     finally:
         tasks.unregister(task_id)
