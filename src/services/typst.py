@@ -4,7 +4,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-from src.configs import c
+from src.configs import CVStyle, c
 from src.schemas import LetterData
 
 
@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 class TypstService:
     def _run_typst(
-        self, source: Path, output: Path, inputs: dict[str, str] | None = None
+        self, source: Path, output: Path, inputs: dict[str, str | None] | None = None
     ) -> None:
         cmd = [
             "typst",
@@ -42,9 +42,9 @@ class TypstService:
             self._run_typst(letter_dir / "main.typ", output)
             return output.read_bytes()
 
-    def build_cv(self, profile_intro: str) -> bytes:
-        cv_main = c.CV_DIR / "modern" / "main.typ"
+    def build_cv(self, cv_intro: str | None, style: CVStyle) -> bytes:
+        cv_main = c.CV_DIR / style / "main.typ"
         with tempfile.TemporaryDirectory() as tmp:
             output = Path(tmp) / "cv.pdf"
-            self._run_typst(cv_main, output, inputs={"intro": profile_intro})
+            self._run_typst(cv_main, output, inputs={"intro": cv_intro})
             return output.read_bytes()
