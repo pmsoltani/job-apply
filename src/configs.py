@@ -82,6 +82,13 @@ class Configs(BaseSettings):
         return f"{self.FIRST_NAME} {self.LAST_NAME}"
 
     # --- FastAPI ---
+    API_VERSION: Literal["v0"] = "v0"
+
+    @computed_field
+    @property
+    def API_PREFIX(self) -> str:
+        return f"/api/{self.API_VERSION}"
+
     FASTAPI_HOST: str = "0.0.0.0"
     FASTAPI_PORT: int = 8000
     CLOUDFLARE_TUNNEL: str | None = None
