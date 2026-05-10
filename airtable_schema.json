@@ -15,7 +15,9 @@
       "apply": "Apply",
       "recipient": "Recipient",
       "llm": "Gemini",
-      "prompt": "Prompt"
+      "prompt": "Prompt",
+      "letter_content": "Letter Content",
+      "cv_content": "CV Content"
     },
     "companies": {
       "company": "Company",
