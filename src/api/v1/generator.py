@@ -1,13 +1,9 @@
-import logging
-
 from fastapi import APIRouter, BackgroundTasks
 
 from src.api.v1.dependencies import AirtableDep, GeneratorDep
 from src.pipelines import run_generate
 from src.schemas import WebhookPayload
 
-
-logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
