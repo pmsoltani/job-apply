@@ -24,13 +24,9 @@ async def health() -> dict:
     return {"status": "ok"}
 
 
-@app.get("/models", response_model=ModelsResponse)
-async def list_models() -> ModelsResponse:
-    provider = c.active_llm
-    return ModelsResponse(
-        provider=provider,
-        model=getattr(c, f"{provider.upper()}_MODEL"),
-    )
+@app.get("/model", response_model=ModelsResponse)
+async def show_model() -> ModelsResponse:
+    return ModelsResponse(provider=c.LLM_PROVIDER, model=c.LLM_MODEL)
 
 
 @app.get("/tasks", response_model=TasksResponse)
