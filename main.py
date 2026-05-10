@@ -6,25 +6,26 @@ from fastapi import FastAPI
 
 from src.api import api_router
 from src.configs import c
+from src.logger import logger_factory
 from src.utils import start_tunnel
 
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s  %(levelname)-8s  %(name)s  %(message)s",
+lg = logger_factory(
+    name=c.APP_NAME,
+    log_file=c.BASE_DIR / "logs" / "app.log",
+    logger_level=logging.DEBUG if c.APP_ENV == "dev" else logging.INFO,
 )
-logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     tunnel_name = c.CLOUDFLARE_TUNNEL
-    proc = await start_tunnel(tunnel_name, logger) if tunnel_name else None
+    proc = await start_tunnel(tunnel_name, lg) if tunnel_name else None
     yield
     if proc:
         proc.terminate()
         await asyncio.to_thread(proc.wait)
-        logger.info("Cloudflare tunnel stopped: '%s'", tunnel_name)
+        lg.info("Cloudflare tunnel stopped: '%s'", tunnel_name)
 
 
 app = FastAPI(
@@ -33,7 +34,7 @@ app = FastAPI(
     description=c.APP_DESCRIPTION,
     lifespan=lifespan,
 )
-app.include_router(api_router)
+app.include_router(api_router, prefix=c.API_PREFIX)
 
 
 if __name__ == "__main__":
