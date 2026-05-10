@@ -12,6 +12,11 @@ _COUNTRY_CODES = {
 }
 
 
+class CVStyle(StrEnum):
+    MODERN = "modern"
+    CLASSIC = "classic"
+
+
 class LLMProvider(StrEnum):
     ANTHROPIC = "anthropic"
     GEMINI = "gemini"
