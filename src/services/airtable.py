@@ -46,6 +46,8 @@ class AirtableService:
             new_fields[f["url"]] = data.url
         if data.country:
             new_fields[f["country"]] = data.country
+        if data.notes:
+            new_fields[f["notes"]] = data.notes
 
         record = self.companies.create(new_fields)
         logger.info("Created company: %s (%s)", data.name, record["id"])
@@ -80,6 +82,7 @@ class AirtableService:
             ("last", "last"),
             ("role", "role"),
             ("email", "email"),
+            ("url", "url"),
         ):
             if getattr(data, attr):
                 new_fields[f[key]] = getattr(data, attr)
