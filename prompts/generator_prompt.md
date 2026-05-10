@@ -18,6 +18,8 @@ A tailored cover letter body in CommonMark markdown. No greeting (Dear…) or si
 
 ### Hard rules
 
+Do NOT mention the applicant's name in the letter body.
+
 **Language**: Write in the applicant's own framing. Do not mirror or paraphrase the job ad's specific vocabulary. Translate requirements into what he has actually done — not the other way round.
 
 **Fabrication — absolute prohibition**: Do not invent anything that cannot be traced to a specific line in the provided CV or experience notes. This means:
@@ -47,3 +49,5 @@ Do not write "I have experience with X" unless X is explicitly in the CV.
 A tailored 2–3 sentence CV profile paragraph. Plain text (no markdown). Third person.
 
 Summarise his background and emphasise skills most relevant to this specific role. Same fabrication and knowledge-vs-experience rules apply. This replaces the default intro on his CV for this application only.
+
+Do NOT mention the applicant's name in the profile intro.
