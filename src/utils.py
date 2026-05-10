@@ -30,11 +30,11 @@ def clean_markdown(text: str) -> str:
     return text.strip()
 
 
-async def start_tunnel(tunnel_name: str, logger: Logger) -> subprocess.Popen | None:
+async def start_tunnel(tunnel_name: str, lg: Logger) -> subprocess.Popen | None:
     """Start a pre-configured Cloudflare tunnel with the given name."""
     try:
         if not tunnel_name:
-            logger.warning("Cloudflare tunnel not started: No tunnel name provided")
+            lg.warning("Cloudflare tunnel not started: No tunnel name provided")
             return None
         proc = await asyncio.to_thread(
             subprocess.Popen,
@@ -42,8 +42,8 @@ async def start_tunnel(tunnel_name: str, logger: Logger) -> subprocess.Popen | N
             stdout=asyncio.subprocess.DEVNULL,
             stderr=asyncio.subprocess.DEVNULL,
         )
-        logger.info("Cloudflare tunnel started: '%s'", tunnel_name)
+        lg.info("Cloudflare tunnel started: '%s'", tunnel_name)
         return proc
     except Exception as exc:
-        logger.warning("Cloudflare tunnel not started: %s", exc)
+        lg.warning("Cloudflare tunnel not started: %s", exc)
         raise
