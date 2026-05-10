@@ -1,10 +1,15 @@
 import json
 from enum import StrEnum
 from pathlib import Path
-from typing import Self
+from typing import Literal, Self
 
 from pydantic import Field, HttpUrl, computed_field, model_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import (
+    BaseSettings,
+    DotEnvSettingsSource,
+    PyprojectTomlConfigSettingsSource,
+    SettingsConfigDict,
+)
 
 
 _COUNTRY_CODES = {
@@ -25,8 +30,33 @@ class LLMProvider(StrEnum):
 
 class Configs(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=".env", env_file_encoding="utf-8", extra="ignore"
+        pyproject_toml_table_header=("project",),
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
     )
+
+    @classmethod
+    def settings_customise_sources(
+        cls,
+        settings_cls,
+        init_settings,
+        env_settings,
+        dotenv_settings,
+        file_secret_settings,
+    ):
+        return (
+            init_settings,
+            PyprojectTomlConfigSettingsSource(settings_cls),
+            DotEnvSettingsSource(settings_cls),
+            env_settings,
+        )
+
+    # --- App info ---
+    APP_NAME: str = Field(..., alias="name")
+    APP_VERSION: str = Field(..., alias="version")
+    APP_DESCRIPTION: str = Field(..., alias="description")
+    APP_ENV: Literal["dev", "prod"] = Field("dev", alias="env")
 
     # --- Paths ---
     BASE_DIR: Path = Path(__file__).parent.parent
