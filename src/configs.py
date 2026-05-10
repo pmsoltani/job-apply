@@ -25,7 +25,7 @@ class Configs(BaseSettings):
 
     # --- Paths ---
     BASE_DIR: Path = Path(__file__).parent.parent
-    CV_DIR: Path = BASE_DIR.parent.parent / "cv"
+    CV_DIR: Path = BASE_DIR.parent / "cv"
     CONTEXT_DIR: Path = BASE_DIR / "context"
     PROMPTS_DIR: Path = BASE_DIR / "prompts"
     PARSER_PROMPT_FILE: Path = PROMPTS_DIR / "parser_prompt.md"
