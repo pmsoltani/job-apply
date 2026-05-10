@@ -84,6 +84,7 @@ class Configs(BaseSettings):
     # --- FastAPI ---
     FASTAPI_HOST: str = "0.0.0.0"
     FASTAPI_PORT: int = 8000
+    CLOUDFLARE_TUNNEL: str | None = None
 
     # --- Jina ---
     JINA_BASE_URL: str = "https://r.jina.ai"
