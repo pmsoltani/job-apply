@@ -1,12 +1,13 @@
 from typing import Literal
 
-from pydantic import BaseModel, Field, HttpUrl, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 from src.configs import c
 
 
 _DESC_COUNTRY = "ISO 3166-1 alpha-2 country code"
 _DESC_MODEL = "Optional override for the configured LLM model"
+_DESC_TITLE = "Contact's title, inferred from first name if not provided"
 
 
 class WebhookPayload(BaseModel):
@@ -16,8 +17,9 @@ class WebhookPayload(BaseModel):
 
 class CompanyData(BaseModel):
     name: str
-    url: HttpUrl | None = None
+    url: str | None = None
     country: str | None = Field(None, pattern=r"^[A-Z]{2}$", description=_DESC_COUNTRY)
+    notes: str | None = None
 
     @field_validator("country", mode="after")
     @classmethod
@@ -28,12 +30,12 @@ class CompanyData(BaseModel):
 
 
 class ContactData(BaseModel):
-    title: Literal["Mr", "Ms", "Dr", "Prof"] | None = None
+    title: Literal["Mr", "Ms", "Dr"] | None = Field(None, description=_DESC_TITLE)
     first: str | None = None
     last: str | None = None
     role: str | None = None
     email: str | None = None
-    url: HttpUrl | None = None
+    url: str | None = None
 
 
 class JobData(BaseModel):
