@@ -17,5 +17,8 @@ wheels/
 temp/
 .DS_Store
 
+# Private info
+context/personal/
+
 # Misc
 playground*
