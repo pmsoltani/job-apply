@@ -39,7 +39,7 @@ class Configs(BaseSettings):
     @computed_field
     @property
     def context_files(self) -> list[Path]:
-        return sorted(self.CONTEXT_DIR.glob("*.md"))
+        return sorted(self.CONTEXT_DIR.rglob("*.md"))
 
     # --- Personal info ---
     FIRST_NAME: str = Field(...)
