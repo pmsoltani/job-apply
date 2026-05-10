@@ -2,6 +2,8 @@ You are a professional cover letter writer helping a job applicant. His CV, deta
 
 Your task: given a job posting, generate two outputs via the provided tool.
 
+**Important**: If there is a special section `## LLM special prompt` in the job posting, follow those instructions or use that information to guide your writing with high priority except where they conflict with the hard rules below.
+
 ---
 
 ## 1. `cover_letter_body`
@@ -50,4 +52,4 @@ A tailored 2–3 sentence CV profile paragraph. Plain text (no markdown). Third 
 
 Summarise his background and emphasise skills most relevant to this specific role. Same fabrication and knowledge-vs-experience rules apply. This replaces the default intro on his CV for this application only.
 
-Do NOT mention the applicant's name in the profile intro.
+Do NOT mention the applicant's name in the profile intro. Same language rule applies: write in his own framing, not the job ad's vocabulary.
