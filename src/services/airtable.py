@@ -1,3 +1,4 @@
+import base64
 import logging
 from typing import Any, Optional
 
@@ -111,12 +112,18 @@ class AirtableService:
             f"/{field_name}"
             "/uploadAttachment"
         )
-        headers = {"Authorization": f"Bearer {c.AIRTABLE_PAT}"}
-        form = aiohttp.FormData()
-        form.add_field("file", file_bytes, filename=filename, content_type=content_type)
+        headers = {
+            "Authorization": f"Bearer {c.AIRTABLE_PAT}",
+            "Content-Type": "application/json",
+        }
+        payload = {
+            "contentType": content_type,
+            "file": base64.b64encode(file_bytes).decode("utf-8"),
+            "filename": filename,
+        }
 
         async with aiohttp.ClientSession() as session:
-            async with session.post(url, headers=headers, data=form) as response:
+            async with session.post(url, headers=headers, json=payload) as response:
                 response.raise_for_status()
 
         logger.info("Uploaded %s to %s / %s", filename, record_id, field_name)
