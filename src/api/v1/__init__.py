@@ -41,9 +41,9 @@ async def list_tasks() -> TasksResponse:
     )
 
 
-router.include_router(parser_router, prefix="/parser", tags=["parser"])
-router.include_router(generator_router, prefix="/generator", tags=["generator"])
-router.include_router(compiler_router, prefix="/compiler", tags=["compiler"])
+router.include_router(parser_router, prefix="/parse", tags=["parser"])
+router.include_router(generator_router, prefix="/generate", tags=["generator"])
+router.include_router(compiler_router, prefix="/compile", tags=["compiler"])
 
 
 ___all__ = [
