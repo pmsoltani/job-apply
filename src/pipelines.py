@@ -113,13 +113,13 @@ async def run_compile(
         record = airtable.get_job(job_id)
         fields = record.get("fields", {})
 
-        letter_content: str = fields.get(f["jobs"]["letter_content"], "")
-        cv_content: str = fields.get(f["jobs"]["cv_content"], "")
-        if not letter_content.strip():
+        cv_content: str = fields.get(f["jobs"]["cv_content"], "").strip()
+        letter_content: str = fields.get(f["jobs"]["letter_content"], "").strip()
+        if not letter_content:
             lg.error("[compile %s] Empty letter Content! Run /generate first.", job_id)
             return
 
-        job_title: str = fields.get(f["jobs"]["job"], job_id)
+        job_title: str = fields.get(f["jobs"]["job"], "")
         tasks.register(task_id, f"Compiling PDFs: {job_title}")
 
         to_address = ""
@@ -145,17 +145,15 @@ async def run_compile(
                 else recipient_links[0]["id"]
             )
             contact_data = airtable.contacts.get(contact_id).get("fields", {})
-            cf = f["contacts"]
-            parts = [
-                contact_data.get(cf["title"], ""),
-                contact_data.get(cf["first"], ""),
-                contact_data.get(cf["last"], ""),
-            ]
-            to_name = " ".join(p for p in parts if p).strip() or "Hiring Manager"
+            contact_title = contact_data.get(f["contacts"]["title"], "")
+            contact_last = contact_data.get(f["contacts"]["last"], "")
+            to_name = "Hiring Manager"
+            if contact_title and contact_last:
+                to_name = f"{contact_title} {contact_last}"
 
         letter_data = LetterData(
-            to=to_name,
-            to_address=to_address,
+            to_name=to_name,  # type: ignore
+            to_address=to_address,  # type: ignore
             subject=job_title,
             body=letter_content,
         )
