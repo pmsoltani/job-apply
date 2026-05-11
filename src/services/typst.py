@@ -12,39 +12,26 @@ lg = logging.getLogger(c.APP_NAME)
 
 
 class TypstService:
-    def _run_typst(
-        self, source: Path, output: Path, inputs: dict[str, str | None] | None = None
-    ) -> None:
-        cmd = [
-            "typst",
-            "compile",
-            str(source),
-            str(output),
-            "--root",
-            str(c.CV_DIR),
-        ]
-        for key, value in (inputs or {}).items():
-            cmd += ["--input", f"{key}={value}"]
-        result = subprocess.run(cmd, capture_output=True, text=True)
+    def _run_typst(self, source: Path, output: Path, data: str) -> None:
+        cmd = ["typst", "compile", str(source), str(output)]
+        args = ["--root", c.CV_DIR, "--input", f"data={data}"]
+        result = subprocess.run(cmd + args, capture_output=True, text=True)
         if result.returncode != 0:
             raise RuntimeError(f"typst compile failed:\n{result.stderr}")
         lg.info("Compiled %s → %s", source.name, output.name)
 
     def build_cover_letter(self, letter_data: LetterData) -> bytes:
         letter_dir = c.CV_DIR / "letter"
-        data_json = letter_dir / "data.json"
-        data_json.write_text(
-            json.dumps(letter_data.to_json_dict(), ensure_ascii=False, indent=2),
-            encoding="utf-8",
-        )
-        with tempfile.TemporaryDirectory() as tmp:
-            output = Path(tmp) / "cover_letter.pdf"
-            self._run_typst(letter_dir / "main.typ", output)
+        json_str = letter_data.model_dump_json(by_alias=True)
+        with tempfile.TemporaryDirectory() as temp_dir:
+            output = Path(temp_dir) / "cover_letter.pdf"
+            self._run_typst(letter_dir / "main.typ", output, data=json_str)
             return output.read_bytes()
 
     def build_cv(self, cv_intro: str | None, style: CVStyle) -> bytes:
-        cv_main = c.CV_DIR / style / "main.typ"
-        with tempfile.TemporaryDirectory() as tmp:
-            output = Path(tmp) / "cv.pdf"
-            self._run_typst(cv_main, output, inputs={"intro": cv_intro})
+        cv_dir = c.CV_DIR / style / "main.typ"
+        json_str = json.dumps({"intro": cv_intro}, ensure_ascii=False)
+        with tempfile.TemporaryDirectory() as temp_dir:
+            output = Path(temp_dir) / "cv.pdf"
+            self._run_typst(cv_dir, output, data=json_str)
             return output.read_bytes()
