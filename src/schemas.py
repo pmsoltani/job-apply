@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from src.configs import c
 
@@ -69,23 +69,13 @@ class TasksResponse(BaseModel):
 class LetterData(BaseModel):
     """Maps to letter/data.json consumed by the Typst cover letter template."""
 
+    model_config = ConfigDict(populate_by_name=True)
+
     date: str = ""
-    from_name: str = c.full_name
-    from_address: str = c.address
-    to: str = "Hiring Manager"
-    to_address: str = ""
+    from_name: str = Field(c.full_name, alias="from")
+    from_address: str = Field(c.address, alias="from-address")
+    to_name: str = Field("Hiring Manager", alias="to")
+    to_address: str = Field("", alias="to-address")
     subject: str = ""
     body: str = ""
     closing: str = "Sincerely,"
-
-    def to_json_dict(self) -> dict:
-        return {
-            "date": self.date,
-            "from": self.from_name,
-            "from-address": self.from_address,
-            "to": self.to,
-            "to-address": self.to_address,
-            "subject": self.subject,
-            "body": self.body,
-            "closing": self.closing,
-        }
