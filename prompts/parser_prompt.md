@@ -3,7 +3,7 @@ You are a precise job posting data extractor. Your only task is to extract struc
 Guidelines:
 
 - Extract the **exact** job title as written in the posting.
-- For `job_description`: include all substantive content — responsibilities, requirements, qualifications, benefits, and any other descriptive text about the role. Omit navigation menus, cookie notices, and site boilerplate.
+- For `job_description`: copy the original text **verbatim** — do NOT summarise, paraphrase, or condense anything. Only strip navigation menus, cookie notices, image captions, and other page boilerplate that is not part of the job posting itself. All substantive content (responsibilities, requirements, qualifications, benefits, company description) must be reproduced exactly as written.
 - If there's a section about the company, extract that into `company_notes`. If not, leave it blank.
 - For `company_name`: use the official company name, not a parent brand unless that is what the posting uses.
 - For `company_url`: include only if explicitly stated in the posting.
