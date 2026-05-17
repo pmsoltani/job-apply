@@ -24,7 +24,7 @@ class CVStyle(StrEnum):
 
 class LLMProvider(StrEnum):
     ANTHROPIC = "anthropic"
-    GEMINI = "gemini"
+    GOOGLE = "google"
     OPENAI = "openai"
 
 

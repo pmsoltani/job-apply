@@ -23,7 +23,7 @@ class LLMService:
 
             provider = AnthropicProvider(api_key=c.LLM_API_KEY, base_url=url)
             return AnthropicModel(model_name, provider=provider)
-        if c.LLM_PROVIDER == LLMProvider.GEMINI:
+        if c.LLM_PROVIDER == LLMProvider.GOOGLE:
             from pydantic_ai.models.google import GoogleModel
             from pydantic_ai.providers.google import GoogleProvider
 
