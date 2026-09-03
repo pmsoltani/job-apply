@@ -17,23 +17,24 @@ class LLMService:
     def _build_model(self, model_name: str | None = None) -> Model:
         url = str(c.LLM_URL) if c.LLM_URL else None
         model_name = model_name or c.LLM_MODEL
+        key = c.LLM_API_KEY.get_secret_value()
         if c.LLM_PROVIDER == LLMProvider.ANTHROPIC:
             from pydantic_ai.models.anthropic import AnthropicModel
             from pydantic_ai.providers.anthropic import AnthropicProvider
 
-            provider = AnthropicProvider(api_key=c.LLM_API_KEY, base_url=url)
+            provider = AnthropicProvider(api_key=key, base_url=url)
             return AnthropicModel(model_name, provider=provider)
         if c.LLM_PROVIDER == LLMProvider.GOOGLE:
             from pydantic_ai.models.google import GoogleModel
             from pydantic_ai.providers.google import GoogleProvider
 
-            provider = GoogleProvider(api_key=c.LLM_API_KEY, base_url=url)
+            provider = GoogleProvider(api_key=key, base_url=url)
             return GoogleModel(model_name, provider=provider)
         if c.LLM_PROVIDER == LLMProvider.OPENAI:
             from pydantic_ai.models.openai import OpenAIChatModel
             from pydantic_ai.providers.openai import OpenAIProvider
 
-            provider = OpenAIProvider(api_key=c.LLM_API_KEY, base_url=url)
+            provider = OpenAIProvider(api_key=key, base_url=url)
             return OpenAIChatModel(model_name, provider=provider)
         raise ValueError(f"Unsupported LLM provider: {c.LLM_PROVIDER}")
 
