@@ -12,7 +12,7 @@ router = APIRouter()
 
 
 @router.get("/")
-async def root():
+async def root() -> dict[str, str]:
     return {
         "name": c.APP_NAME,
         "description": c.APP_DESCRIPTION,
@@ -22,7 +22,7 @@ async def root():
 
 
 @router.get("/health")
-async def health() -> dict:
+async def health() -> dict[str, str]:
     return {"status": "ok"}
 
 

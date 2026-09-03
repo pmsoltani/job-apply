@@ -14,7 +14,7 @@ async def parse(
     background_tasks: BackgroundTasks,
     airtable: AirtableDep,
     parser: ParserDep,
-) -> dict:
+) -> dict[str, str]:
     background_tasks.add_task(
         run_parse, payload.record_id, airtable, parser, payload.model
     )
@@ -28,7 +28,7 @@ async def parse_get(
     airtable: AirtableDep,
     parser: ParserDep,
     model: str | None = None,
-) -> dict:
+) -> dict[str, str]:
     return await parse(
         WebhookPayload(record_id=record_id, model=model),
         background_tasks,

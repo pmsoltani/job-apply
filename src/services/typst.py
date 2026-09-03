@@ -15,10 +15,11 @@ class TypstService:
     def _run_typst(self, source: Path, output: Path, data: str) -> None:
         cmd = ["typst", "compile", str(source), str(output)]
         args = ["--root", c.CV_DIR, "--input", f"data={data}"]
-        result = subprocess.run(cmd + args, capture_output=True, text=True)
-        if result.returncode != 0:
-            raise RuntimeError(f"typst compile failed:\n{result.stderr}")
-        lg.info("Compiled %s → %s", source.name, output.name)
+        try:
+            subprocess.run(cmd + args, capture_output=True, text=True, check=True)
+            lg.info("Compiled %s → %s", source.name, output.name)
+        except subprocess.CalledProcessError as e:
+            raise RuntimeError(f"typst compile failed:\n{e.stderr}") from e
 
     def build_cover_letter(self, letter_data: LetterData) -> bytes:
         letter_dir = c.CV_DIR / "letter"

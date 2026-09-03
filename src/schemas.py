@@ -23,7 +23,7 @@ class CompanyData(BaseModel):
 
     @field_validator("country", mode="after")
     @classmethod
-    def normalize_country_codes(cls, v) -> str | None:
+    def normalize_country_codes(cls, v: str | None) -> str | None:
         if v is None:
             return v
         return c.COUNTRY_CODE_MAPPING.get(v, v)

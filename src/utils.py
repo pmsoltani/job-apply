@@ -9,10 +9,12 @@ import aiohttp
 async def fetch_url(url: str, timeout: int) -> str:
     """Fetch a URL via Jina Reader and return raw markdown."""
     client_timeout = aiohttp.ClientTimeout(total=timeout)
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url, timeout=client_timeout) as response:
-            response.raise_for_status()
-            return await response.text()
+    async with (
+        aiohttp.ClientSession() as session,
+        session.get(url, timeout=client_timeout) as response,
+    ):
+        response.raise_for_status()
+        return await response.text()
 
 
 def clean_markdown(text: str) -> str:
@@ -30,17 +32,18 @@ def clean_markdown(text: str) -> str:
     return text.strip()
 
 
-async def start_tunnel(tunnel_name: str, lg: Logger) -> subprocess.Popen | None:
+async def start_tunnel(tunnel_name: str, lg: Logger) -> subprocess.Popen[bytes] | None:
     """Start a pre-configured Cloudflare tunnel with the given name."""
     try:
         if not tunnel_name:
             lg.warning("Cloudflare tunnel not started: No tunnel name provided")
             return None
         proc = await asyncio.to_thread(
-            subprocess.Popen,
-            ["cloudflared", "tunnel", "run", tunnel_name],
-            stdout=asyncio.subprocess.DEVNULL,
-            stderr=asyncio.subprocess.DEVNULL,
+            lambda: subprocess.Popen(
+                ["cloudflared", "tunnel", "run", tunnel_name],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
         )
         lg.info("Cloudflare tunnel started: '%s'", tunnel_name)
         return proc

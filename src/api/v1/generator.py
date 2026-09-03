@@ -14,7 +14,7 @@ async def generate(
     background_tasks: BackgroundTasks,
     airtable: AirtableDep,
     generator: GeneratorDep,
-) -> dict:
+) -> dict[str, str]:
     background_tasks.add_task(
         run_generate, payload.record_id, airtable, generator, payload.model
     )
@@ -28,7 +28,7 @@ async def generate_get(
     airtable: AirtableDep,
     generator: GeneratorDep,
     model: str | None = None,
-) -> dict:
+) -> dict[str, str]:
     return await generate(
         WebhookPayload(record_id=record_id, model=model),
         background_tasks,
