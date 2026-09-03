@@ -1,7 +1,7 @@
 import logging
 import time
 
-from pydantic_ai import Agent
+from pydantic_ai import Agent, PromptedOutput
 from pydantic_ai.exceptions import (
     ModelAPIError,
     ModelHTTPError,
@@ -80,8 +80,11 @@ class ParserService(LLMService):
     def __init__(self) -> None:
         model = self._build_model()
         prompt = c.PARSER_PROMPT_FILE.read_text(encoding="utf-8")
+        # Self-hosted LLM might serialize nested objects (`company`) as JSON
+        # strings in tool arguments, which fails validation. Asking for JSON in
+        # the response body via `PromptedOutput` solves that.
         self._agent: Agent[None, JobData | str] = Agent(
-            model, output_type=JobData, system_prompt=prompt
+            model, output_type=PromptedOutput(JobData), system_prompt=prompt
         )
 
     async def extract_job_data(self, text: str, model: str | None = None) -> JobData:

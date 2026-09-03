@@ -141,8 +141,11 @@ class Configs(BaseSettings):
     LLM_MODEL: str = Field(...)
     LLM_URL: HttpUrl | None = None
 
-    MAX_TOKENS_PARSER: int = 2048
+    # The parser echoes the job posting back verbatim in `notes`, so its output is
+    # roughly as long as the posting itself; 2048 truncates mid-JSON.
+    MAX_TOKENS_PARSER: int = 8192
     MAX_TOKENS_GENERATOR: int = 4096
+    MODEL_CHECK_MAX_TOKENS: int = 512
 
     @model_validator(mode="after")
     def _validate_llm(self) -> Self:
