@@ -3,7 +3,7 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Literal, Self
 
-from pydantic import Field, HttpUrl, computed_field, model_validator
+from pydantic import Field, HttpUrl, SecretStr, computed_field, model_validator
 from pydantic_settings import (
     BaseSettings,
     DotEnvSettingsSource,
@@ -117,7 +117,7 @@ class Configs(BaseSettings):
 
     # --- LLM ---
     LLM_PROVIDER: LLMProvider = Field(...)
-    LLM_API_KEY: str = Field(...)
+    LLM_API_KEY: SecretStr = SecretStr("not required")
     LLM_MODEL: str = Field(...)
     LLM_URL: HttpUrl | None = None
 
@@ -126,8 +126,8 @@ class Configs(BaseSettings):
 
     @model_validator(mode="after")
     def _validate_llm(self) -> Self:
-        if not all([self.LLM_PROVIDER, self.LLM_API_KEY, self.LLM_MODEL]):
-            raise ValueError("LLM_PROVIDER, LLM_API_KEY, and LLM_MODEL must be set")
+        if not all([self.LLM_PROVIDER, self.LLM_MODEL]):
+            raise ValueError("LLM_PROVIDER and LLM_MODEL must be set")
         return self
 
 
