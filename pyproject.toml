@@ -16,6 +16,9 @@ dependencies = [
     "uvicorn[standard]>=0.46.0",
 ]
 
+[dependency-groups]
+dev = ["devtools>=0.12.2", "ruff>=0.16.5", "ty>=0.0.78"]
+
 [tool.ruff.lint]
 extend-select = ["I", "RUF022"]
 ignore = ["E501"]
@@ -25,9 +28,6 @@ lines-after-imports = 2
 
 [tool.ty.rules]
 all = "warn"
-
-[dependency-groups]
-dev = ["devtools>=0.12.2"]
 
 [project.scripts]
 job-apply = "src.api.server:main"
