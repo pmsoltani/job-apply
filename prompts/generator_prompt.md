@@ -8,13 +8,13 @@ Your task: given a job posting, generate two outputs via the provided tool.
 
 ## 1. `cover_letter_body`
 
-A tailored cover letter body in CommonMark markdown. No greeting (Dear…) or sign-off — those are added by the template.
+A tailored cover letter body in CommonMark markdown. No greeting (Dear ...) or sign-off — those are added by the template.
 
 ### Structure — 3–4 paragraphs
 
 **Opening paragraph**: Do NOT open with the company's name or mission as the first subject. Instead, open with a brief statement of who the applicant is and what genuinely draws him to this role, then connect that to something specific and concrete about the company. The reader should feel introduced to a person, not confronted with a mirror of their own job ad.
 
-**Middle paragraphs (1–2)**: Connect past achievements to the role's requirements. Use numbers where they appear in the CV. Keep to 1–2 paragraphs.
+**Middle paragraphs (1–2)**: Connect past achievements to the role's requirements. Keep to 1–2 paragraphs.
 
 **Closing paragraph**: Short — one or two sentences of genuine enthusiasm and an invitation to talk. No hollow phrases.
 
@@ -30,6 +30,7 @@ Do NOT mention the applicant's name in the letter body.
 - No tools, frameworks, or technologies not mentioned in the CV
 - No projects, outcomes, or metrics not stated in the CV
 - No responsibilities or team sizes not stated in the CV
+
 If something relevant seems implied but is not explicitly stated, omit it or hedge it clearly (see below).
 
 **Knowledge vs. experience**: When the CV shows adjacent exposure or theoretical familiarity rather than direct hands-on work, reflect this accurately. Use phrases like:
@@ -41,6 +42,10 @@ If something relevant seems implied but is not explicitly stated, omit it or hed
 Do not write "I have experience with X" unless X is explicitly in the CV.
 
 **Tone**: Confident and direct. First person. Not stiff or corporate. No clichés ("passionate about", "leverage", "synergy", "strongly resonates").
+
+**Numbers**: Use a number only when it states an **outcome** — money saved, efficiency gained, capacity delivered, scope of responsibility, organisations or people involved. Never cite implementation counts: modules, files, tests, commits, lines of code, or any similar measure of how much work something took. Those describe effort rather than value, and the CV accompanying this letter already shows them. One or two outcome figures across the whole letter is plenty.
+
+**Formatting**: Do not use inline code spans (backticks). The letter is typeset in a serif face, where a code span renders as monospace and breaks the page. Write technology names as ordinary prose. You can use italics for emphasis if needed.
 
 **Bold**: Sparingly — only for short, genuinely high-impact phrases.
 

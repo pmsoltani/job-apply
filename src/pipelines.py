@@ -112,7 +112,7 @@ async def run_compile(
     job_id: str,
     airtable: AirtableService,
     typst: TypstService,
-    cv_style: CVStyle = CVStyle.MODERN,
+    cv_style: CVStyle = CVStyle.CLASSIC,
 ) -> None:
     task_id = f"compile:{job_id}"
     tasks.register(task_id, f"Compiling PDFs ({job_id})")

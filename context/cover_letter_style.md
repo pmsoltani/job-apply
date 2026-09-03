@@ -18,9 +18,10 @@ This file captures personal preferences and recurring themes to guide the writin
 
 ## Things to avoid
 
-- Starting with "I am writing to apply for…"
-- Repeating the CV verbatim — add context, not just facts
-- Overly long letters — aim for one page when compiled
+- Starting with "I am writing to apply for ...".
+- Repeating the CV verbatim — add context, not just facts.
+- Overly long letters — aim for one page when compiled.
+- Giving an earlier role its own full paragraph when it is only there to support the main argument — connect it to the role being applied for, or leave it out.
 
 ## Additional notes
 

@@ -1,8 +1,14 @@
+import re
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from src.configs import c
+
+
+# Inline code spans on a single line, one or two backticks. Deliberately does not
+# match fenced blocks, which have nothing after the opening backticks.
+_CODE_SPAN = re.compile(r"`{1,2}([^`\n]+?)`{1,2}")
 
 
 _DESC_COUNTRY = "ISO 3166-1 alpha-2 country code"
@@ -54,6 +60,18 @@ class JobData(BaseModel):
 class GeneratedContent(BaseModel):
     cover_letter_body: str
     profile_intro: str
+
+    @field_validator("cover_letter_body", mode="after")
+    @classmethod
+    def italicize_code_spans(cls, v: str) -> str:
+        """Turn inline code spans into italics in the cover letter."""
+        return _CODE_SPAN.sub(r"_\1_", v)
+
+    @field_validator("profile_intro", mode="after")
+    @classmethod
+    def strip_code_spans(cls, v: str) -> str:
+        """Drop inline code spans: the CV intro is specified as plain text."""
+        return _CODE_SPAN.sub(r"\1", v)
 
 
 class ModelsResponse(BaseModel):

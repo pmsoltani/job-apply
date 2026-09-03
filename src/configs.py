@@ -144,7 +144,7 @@ class Configs(BaseSettings):
     # The parser echoes the job posting back verbatim in `notes`, so its output is
     # roughly as long as the posting itself; 2048 truncates mid-JSON.
     MAX_TOKENS_PARSER: int = 8192
-    MAX_TOKENS_GENERATOR: int = 4096
+    MAX_TOKENS_GENERATOR: int = 8192
     MODEL_CHECK_MAX_TOKENS: int = 512
 
     @model_validator(mode="after")
