@@ -1,11 +1,18 @@
 import logging
+import time
 
 from pydantic_ai import Agent
+from pydantic_ai.exceptions import (
+    ModelAPIError,
+    ModelHTTPError,
+    UnexpectedModelBehavior,
+    UserError,
+)
 from pydantic_ai.models import Model
 from pydantic_ai.settings import ModelSettings
 
 from src.configs import LLMProvider, c
-from src.schemas import GeneratedContent, JobData
+from src.schemas import GeneratedContent, JobData, ModelCheckResponse
 
 
 lg = logging.getLogger(c.APP_NAME)
@@ -37,6 +44,36 @@ class LLMService:
             provider = OpenAIProvider(api_key=key, base_url=url)
             return OpenAIChatModel(model_name, provider=provider)
         raise ValueError(f"Unsupported LLM provider: {c.LLM_PROVIDER}")
+
+    async def check(self, model: str | None = None) -> ModelCheckResponse:
+        """Verify the configured provider, model, URL and key with a live check."""
+        model_name = model or c.LLM_MODEL
+        result = ModelCheckResponse(
+            ok=False,
+            provider=c.LLM_PROVIDER,
+            model=model_name,
+            url=str(c.LLM_URL) if c.LLM_URL else None,
+        )
+        started = time.perf_counter()
+        try:
+            agent: Agent[None, str] = Agent(self._build_model(model), output_type=str)
+            # Generous cap: reasoning models spend tokens thinking before they answer,
+            # and a token-limit abort would look like a config failure.
+            run = await agent.run(
+                "Reply with the single word: pong",
+                model_settings=ModelSettings(max_tokens=c.MODEL_CHECK_MAX_TOKENS),
+            )
+        except ModelHTTPError as exc:
+            result.error = f"{type(exc).__name__}: {exc}"
+            result.status_code = exc.status_code
+        except (ModelAPIError, UnexpectedModelBehavior, UserError, ValueError) as exc:
+            result.error = f"{type(exc).__name__}: {exc}"
+        else:
+            result.ok = True
+            result.reply = run.output.strip()[:100]
+        result.latency_ms = int((time.perf_counter() - started) * 1000)
+        lg.info("Model check (%s / %s): ok=%s", c.LLM_PROVIDER, model_name, result.ok)
+        return result
 
 
 class ParserService(LLMService):

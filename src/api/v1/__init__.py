@@ -2,10 +2,11 @@ from fastapi import APIRouter
 
 from src import tasks
 from src.api.v1.compiler import router as compiler_router
+from src.api.v1.dependencies import LLMDep
 from src.api.v1.generator import router as generator_router
 from src.api.v1.parser import router as parser_router
 from src.configs import c
-from src.schemas import ModelsResponse, TasksResponse, TaskStatus
+from src.schemas import ModelCheckResponse, ModelsResponse, TasksResponse, TaskStatus
 
 
 router = APIRouter()
@@ -29,6 +30,12 @@ async def health() -> dict[str, str]:
 @router.get("/model", response_model=ModelsResponse)
 async def show_model() -> ModelsResponse:
     return ModelsResponse(provider=c.LLM_PROVIDER, model=c.LLM_MODEL)
+
+
+@router.get("/model/check", response_model=ModelCheckResponse)
+async def check_model(llm: LLMDep, model: str | None = None) -> ModelCheckResponse:
+    """Round-trip a tiny prompt to check if the provider, model, URL and key work."""
+    return await llm.check(model)
 
 
 @router.get("/tasks", response_model=TasksResponse)

@@ -3,7 +3,18 @@ from typing import Annotated
 
 from fastapi import Depends
 
-from src.services import AirtableService, GeneratorService, ParserService, TypstService
+from src.services import (
+    AirtableService,
+    GeneratorService,
+    LLMService,
+    ParserService,
+    TypstService,
+)
+
+
+@lru_cache
+def get_llm() -> LLMService:
+    return LLMService()
 
 
 @lru_cache
@@ -25,6 +36,7 @@ def get_airtable() -> AirtableService:
     return AirtableService()
 
 
+LLMDep = Annotated[LLMService, Depends(get_llm)]
 ParserDep = Annotated[ParserService, Depends(get_parser)]
 GeneratorDep = Annotated[GeneratorService, Depends(get_generator)]
 TypstDep = Annotated[TypstService, Depends(get_typst)]
