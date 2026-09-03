@@ -1,6 +1,7 @@
 import base64
 import logging
-from typing import Any, Optional
+from collections.abc import Mapping
+from typing import Any
 
 import aiohttp
 from pyairtable import Api
@@ -12,6 +13,31 @@ from src.schemas import CompanyData, ContactData
 
 
 lg = logging.getLogger(c.APP_NAME)
+
+
+def field_str(fields: Mapping[str, Any], key: str, default: str = "") -> str:
+    """Read a text field from a record's `fields`, narrowing the type to `str`."""
+    value = fields.get(key, default)
+    return value if isinstance(value, str) else default
+
+
+def first_link_id(fields: Mapping[str, Any], key: str) -> str | None:
+    """Return the first record id from a linked-record field, if any.
+
+    Linked records come either as bare id strings or as `{"id": ...}` dicts,
+    depending on the API options used to fetch them.
+    """
+    links = fields.get(key)
+    if not isinstance(links, list) or not links:
+        return None
+    first = links[0]
+    if isinstance(first, str):
+        return first
+    if isinstance(first, dict):
+        record_id = first.get("id")
+        if isinstance(record_id, str):
+            return record_id
+    return None
 
 
 class AirtableService:
@@ -49,7 +75,7 @@ class AirtableService:
     def get_company(self, company_id: str) -> RecordDict:
         return self.companies.get(company_id)
 
-    def find_or_create_contact(self, data: ContactData, job_id: str) -> Optional[str]:
+    def find_or_create_contact(self, data: ContactData, job_id: str) -> str | None:
         f = c.fields["contacts"]
 
         if data.email:
@@ -106,8 +132,10 @@ class AirtableService:
             "filename": filename,
         }
 
-        async with aiohttp.ClientSession() as session:
-            async with session.post(url, headers=headers, json=payload) as response:
-                response.raise_for_status()
+        async with (
+            aiohttp.ClientSession() as session,
+            session.post(url, headers=headers, json=payload) as response,
+        ):
+            response.raise_for_status()
 
         lg.info("Uploaded %s to %s / %s", filename, record_id, field_name)
