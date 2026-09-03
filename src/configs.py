@@ -1,9 +1,16 @@
-import json
 from enum import StrEnum
+from functools import lru_cache
 from pathlib import Path
-from typing import Literal, Self
+from typing import Literal, Self, override
 
-from pydantic import Field, HttpUrl, SecretStr, computed_field, model_validator
+from pydantic import (
+    BaseModel,
+    Field,
+    HttpUrl,
+    SecretStr,
+    computed_field,
+    model_validator,
+)
 from pydantic_settings import (
     BaseSettings,
     DotEnvSettingsSource,
@@ -15,6 +22,18 @@ from pydantic_settings import (
 _COUNTRY_CODES = {
     "GB": "UK",
 }
+
+
+class AirtableSchema(BaseModel):
+    """Shape of `airtable_schema.json`: table names and per-table field names."""
+
+    tables: dict[str, str]
+    fields: dict[str, dict[str, str]]
+
+
+@lru_cache(maxsize=1)
+def _load_airtable_schema(path: Path) -> AirtableSchema:
+    return AirtableSchema.model_validate_json(path.read_text())
 
 
 class CVStyle(StrEnum):
@@ -37,6 +56,7 @@ class Configs(BaseSettings):
     )
 
     @classmethod
+    @override
     def settings_customise_sources(
         cls,
         settings_cls,
@@ -108,12 +128,12 @@ class Configs(BaseSettings):
     @computed_field
     @property
     def tables(self) -> dict[str, str]:
-        return json.loads(self.AIRTABLE_SCHEMA_FILE.read_text())["tables"]
+        return _load_airtable_schema(self.AIRTABLE_SCHEMA_FILE).tables
 
     @computed_field
     @property
     def fields(self) -> dict[str, dict[str, str]]:
-        return json.loads(self.AIRTABLE_SCHEMA_FILE.read_text())["fields"]
+        return _load_airtable_schema(self.AIRTABLE_SCHEMA_FILE).fields
 
     # --- LLM ---
     LLM_PROVIDER: LLMProvider = Field(...)
