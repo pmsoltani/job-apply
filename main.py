@@ -3,6 +3,7 @@ import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.responses import RedirectResponse
 
 from src.api import api_router
 from src.configs import c
@@ -35,6 +36,11 @@ app = FastAPI(
     lifespan=lifespan,
 )
 app.include_router(api_router, prefix=c.API_PREFIX)
+
+
+@app.get("/", include_in_schema=False)
+async def redirect_to_docs():
+    return RedirectResponse(url="/docs")
 
 
 if __name__ == "__main__":
