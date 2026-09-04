@@ -15,7 +15,7 @@ async def compile_docs(
     background_tasks: BackgroundTasks,
     airtable: AirtableDep,
     typst: TypstDep,
-    cv_style: CVStyle = CVStyle.MODERN,
+    cv_style: CVStyle = CVStyle.CLASSIC,
 ) -> dict[str, str]:
     background_tasks.add_task(run_compile, payload.record_id, airtable, typst, cv_style)
     return {"status": "accepted", "record_id": payload.record_id}
@@ -27,7 +27,7 @@ async def compile_docs_get(
     background_tasks: BackgroundTasks,
     airtable: AirtableDep,
     typst: TypstDep,
-    cv_style: CVStyle = CVStyle.MODERN,
+    cv_style: CVStyle = CVStyle.CLASSIC,
 ) -> dict[str, str]:
     return await compile_docs(
         WebhookPayload(record_id=record_id), background_tasks, airtable, typst, cv_style
