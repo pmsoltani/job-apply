@@ -1,6 +1,61 @@
-# Airtable + Cloudflare Tunnel Setup
+# job-apply
 
-## 1. One-time environment setup
+Parses job postings and generates tailored cover letters and CVs as PDFs, driven from an Airtable base.
+
+Three pipelines, each triggered by a button in Airtable:
+
+| Pipeline     | Reads                               | Writes                                 |
+| ------------ | ----------------------------------- | -------------------------------------- |
+| **parse**    | `AD` (URL) or `Notes` (pasted text) | `Job`, `Notes`, `Company`, `Recipient` |
+| **generate** | `Prompt`                            | `Letter Content`, `CV Content`         |
+| **compile**  | `Letter Content`, `CV Content`      | `Docs` (two PDFs)                      |
+
+`parse` fetches the posting through [Jina Reader](https://jina.ai/reader/) and extracts structured fields with an LLM. `generate` writes the letter from your CV and personal context. `compile` renders both using Typst templates.
+
+At each stage, you can review and edit the results in Airtable before moving on. The final PDFs are stored in Airtable as attachments.
+
+## Requirements
+
+|                                         |                                                                    |
+| --------------------------------------- | ------------------------------------------------------------------ |
+| Python                                  | 3.13 or newer, with [uv](https://docs.astral.sh/uv/)               |
+| [Typst](https://github.com/typst/typst) | on `PATH`, invoked as a subprocess to render PDFs                  |
+| Typst templates                         | the sibling **`cv`** repository (see below)                        |
+| Airtable                                | a base with Jobs, Companies and Contacts tables                    |
+| LLM                                     | an API key for Anthropic, Google or any OpenAI-compatible endpoint |
+
+### The `cv` repository
+
+The Typst templates live **outside this repo**. `CV_DIR` defaults to `../cv`, so the two must sit side by side:
+
+```plaintext
+Git/
+├── job-apply/          <- this repository
+└── cv/
+    ├── classic/        <- CV template
+    ├── modern/         <- CV template
+    ├── letter/         <- cover letter template
+    └── shared/         <- constants and helpers
+```
+
+Without it, `parse` and `generate` still work but `compile` fails. Set `CV_DIR` in `.env` if you keep the templates elsewhere.
+
+## 1. Setup
+
+```bash
+git clone <this repo> job-apply
+git clone <cv templates repo> cv     # sibling directory, see above
+cd job-apply
+uv sync
+
+# Linux, macOS
+curl -fsSL https://install.typst.community/install.sh | sh
+
+# Windows (PowerShell)
+irm https://install.typst.community/install.ps1 | iex
+```
+
+### Environment
 
 Copy `.env.example` to `.env` and fill in your values:
 
@@ -8,73 +63,129 @@ Copy `.env.example` to `.env` and fill in your values:
 # Personal info (used in cover letter header)
 FIRST_NAME=Jane
 LAST_NAME=Doe
-address="123 Example St\nCity, Country"
+ADDRESS="123 Example St\nCity, Country"
 
-# LLM — at least one provider must be fully configured
-ANTHROPIC_API_KEY=sk-ant-...
-ANTHROPIC_MODEL=claude-sonnet-4-6
-# GEMINI_API_KEY=...
-# GEMINI_MODEL=gemini-2.0-flash
-# OPENAI_API_KEY=...
-# OPENAI_MODEL=gpt-4o
+# LLM settings
+LLM_PROVIDER=google            # anthropic | google | openai
+LLM_API_KEY=...
+LLM_MODEL=gemini-3.5-flash
+# LLM_URL=...                  # only for OpenAI-compatible endpoints (vLLM, Ollama, ...)
 
-# Airtable
-AIRTABLE_PAT=pat...         # Personal Access Token from airtable.com/create/tokens
-AIRTABLE_BASE_ID=app...     # From the URL when viewing your base
+# Airtable settings
+AIRTABLE_PAT=pat...            # airtable.com/create/tokens
+AIRTABLE_BASE_ID=app...        # from the URL when viewing your base
+
+# Server settings
+FASTAPI_HOST=localhost
+FASTAPI_PORT=8000
+# CLOUDFLARE_TUNNEL=my-tunnel  # named tunnel, started automatically on boot
+
+# Token budgets
+MAX_TOKENS_PARSER=8192         # parse echoes the posting verbatim, so this must be generous
+MAX_TOKENS_GENERATOR=8192
 ```
 
-Install [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/get-started/create-local-tunnel/) (one-time):
+`LLM_PROVIDER` selects which pydantic-ai provider is built; `LLM_URL` is only needed to point the OpenAI provider at a non-OpenAI endpoint.
+
+### Airtable field names
+
+`airtable_schema.json` maps the names this app uses internally to your actual column names. If your columns differ, edit this file:
+
+```json
+{
+  "tables": {
+    "jobs": "Jobs",
+    "companies": "Companies",
+    "contacts": "Contacts"
+  },
+  "fields": {
+    "jobs": {
+      "job": "Job",
+      "ad": "AD",
+      "notes": "Notes",
+      "docs": "Docs",
+      "...": "..."
+    }
+  }
+}
+```
+
+### Personal context
+
+Everything in `context/` is concatenated into the generator's system prompt.
+
+```plaintext
+context/
+├── cover_letter_style.md    # tracked; themes, target sectors, things to avoid
+└── personal/                # gitignored
+    ├── cv.md
+    └── work_at_cmac.md
+```
+
+`context/personal/` is excluded from version control, so a fresh clone has no CV to work from. The generator will still run, but the results will be generic and unusable; populate this directory first.
+
+## 2. Running locally
 
 ```powershell
-winget install Cloudflare.cloudflared
+uv run job-apply        # or: uv run main.py
 ```
 
----
+You can verify the LLM configuration by visiting `http://localhost:8000/api/v0/model/check`. It performs a real round-trip and reports `ok`, latency, and the provider's own error text if the key, URL or model name is wrong.
 
-## 2. Starting the server (every session)
-
-Open two terminals:
-
-### Terminal 1 — API server
-
-```powershell
-cd path\to\job-apply
-uv run job-apply
-# or: uv run main.py
-```
-
-### Terminal 2 — Public tunnel
+If `CLOUDFLARE_TUNNEL` is set, the named tunnel starts with the app and stops with it (no second terminal needed). For an ad-hoc tunnel with a throwaway URL instead:
 
 ```powershell
 cloudflared tunnel --url http://localhost:8000
 ```
 
-Note the `https://xxxx.trycloudflare.com` URL printed by cloudflared.
-
----
-
 ## 3. API reference
 
-Interactive docs (auto-generated by FastAPI) are available at `http://localhost:8000/docs` while the server is running.
+| Method   | Path                  | Description                                            |
+| -------- | --------------------- | ------------------------------------------------------ |
+| GET      | `/api/v0/`            | App name, version, description                         |
+| GET      | `/api/v0/health`      | Liveness — `{"status": "ok"}`                          |
+| GET      | `/api/v0/model`       | Configured provider and model                          |
+| GET      | `/api/v0/model/check` | Live round-trip to verify provider, model, URL and key |
+| GET      | `/api/v0/tasks`       | Background tasks currently running                     |
+| GET/POST | `/api/v0/parse`       | Pipeline 1                                             |
+| GET/POST | `/api/v0/generate`    | Pipeline 2                                             |
+| GET/POST | `/api/v0/compile`     | Pipeline 3                                             |
 
-| Method | Path | Description |
-| --- | --- | --- |
-| GET | `/health` | Liveness check — returns `{"status": "ok"}` |
-| GET | `/model` | Active LLM provider and configured model |
-| GET | `/tasks` | Currently running background tasks |
-| POST | `/parse` | Pipeline 1 — parse job posting, populate Airtable fields |
-| POST | `/generate` | Pipeline 2 — generate content, save to **Letter Content** + **CV Content** |
-| POST | `/compile` | Pipeline 3 — compile PDFs from saved content, upload to **Docs** |
+The three pipelines return `202 Accepted` immediately and run in the background.
 
-### `GET /model`
+**POST** takes a JSON body; `parse` and `generate` accept an optional `model` override, `compile` accepts an optional `cv_style`:
 
 ```json
-{"provider": "anthropic", "model": "claude-sonnet-4-6"}
+{ "record_id": "recXXXXXX", "model": "gemini-3.1-pro-preview" }
 ```
 
-### `GET /tasks`
+**GET** takes the same values as query parameters, used by Airtable button fields:
 
-Returns live status while a pipeline is running. Descriptions update as each pipeline progresses. Empty `tasks` means nothing is currently running.
+```plaintext
+/api/v0/parse?record_id=recXXXXXX&model=gemini-3.5-flash
+/api/v0/compile?record_id=recXXXXXX&cv_style=modern
+```
+
+`cv_style` is `classic` (default) or `modern`.
+
+### `GET /api/v0/model/check`
+
+```json
+{
+  "ok": true,
+  "provider": "google",
+  "model": "gemini-3.5-flash",
+  "url": null,
+  "latency_ms": 1690,
+  "reply": "pong",
+  "error": null,
+  "status_code": null
+}
+```
+
+On failure, `ok` is `false` and `error` carries the provider's message — a wrong model name returns `status_code: 404`, a bad key `401`, an unreachable URL a connection error.
+
+### `GET /api/v0/tasks`
 
 ```json
 {
@@ -82,98 +193,48 @@ Returns live status while a pipeline is running. Descriptions update as each pip
   "count": 1,
   "tasks": {
     "generate:recXXXXXX": {
-      "description": "Writing cover letter: Senior Data Scientist",
-      "started_at": "2026-05-09T10:23:41+00:00"
+      "description": "Generating content: Senior Data Scientist",
+      "started_at": "2026-09-03T10:23:41+00:00"
     }
   }
 }
 ```
 
-### `POST /parse`, `POST /generate`, `POST /compile`
+## 4. Airtable buttons
 
-Minimal body — uses the configured model:
+Add the following Button fields to the Jobs table, with the action set to _Open URL_ using the formula:
 
-```json
-{"record_id": "recXXXXXX"}
+```plaintext
+"https://your-host/api/v0/parse?record_id=" & RECORD_ID()
 ```
 
-`/parse` and `/generate` accept an optional `model` field to override the LLM for that request:
+Repeat for `/generate` and `/compile`.
 
-```json
-{"record_id": "recXXXXXX", "model": "claude-haiku-4-5-20251001"}
-```
+> If you use an ad-hoc `trycloudflare.com` tunnel, its URL changes every session and all three buttons need updating. A named tunnel or a deployed host avoids this.
 
-All three return `202 Accepted` immediately; the actual work runs in the background.
-
----
-
-## 4. Add three Button fields to the Jobs table
-
-In Airtable → your base → Jobs table → **+** → Button:
-
-| Setting | "Parse Job" button | "Generate Docs" button | "Compile Docs" button |
-| --- | --- | --- | --- |
-| Label | Parse Job | Generate Docs | Compile Docs |
-| Action | Run automation | Run automation | Run automation |
-| Automation | (see step 5) | (see step 5) | (see step 5) |
-
----
-
-## 5. Create three Airtable Automations
-
-Go to **Automations** (top right) → **+ New automation** for each:
-
-### Automation A — "Parse Job"
-
-| Step | Config |
-| --- | --- |
-| Trigger | **Button clicked** → select the "Parse Job" button field |
-| Action | **Send a webhook** |
-| URL | `https://xxxx.trycloudflare.com/parse` |
-| Method | POST |
-| Body (JSON) | `{ "record_id": "{{ record.id }}" }` |
-
-### Automation B — "Generate Docs"
-
-Same as above but:
-
-- Trigger: **Button clicked** → "Generate Docs" button
-- URL: `https://xxxx.trycloudflare.com/generate`
-
-### Automation C — "Compile Docs"
-
-Same as above but:
-
-- Trigger: **Button clicked** → "Compile Docs" button
-- URL: `https://xxxx.trycloudflare.com/compile`
-
-> **Note**: update the tunnel URL in all three automations each session (unless you configure a named tunnel with a fixed subdomain — see Cloudflare docs for persistent tunnels).
-
----
-
-## 6. Update the Prompt formula (if not already set)
+## 5. The `Prompt` field
 
 In the Jobs table, the `Prompt` field should be a Formula field combining all relevant columns. Example:
 
 ```plaintext
-"--- New Job Application ---"&"\n\n"&
-"Title: "&{Job}&"\n"&
-"Company: "&{Company}&"\n"&
-"AD: "&{AD}&"\n"&
-"LLM Notes: "&{LLM Notes}&"\n"&
-"Description:"&"\n"&
-{Notes}&"\n\n"&
-"--- End of Job Application ---"
+"--- New Job Application ---" &
+"\n\n## Title: " & {Job} &
+"\n## Employer: " & {Company} &
+IF({LLM Notes}, "\n## LLM special prompt: " & {LLM Notes}) &
+"\n## Description:\n" & {Notes} &
+IF({Comp. Info}, "\n\n## Employer Description:\n" & {Comp. Info}) &
+"\n\n--- End of Job Application ---"
 ```
 
-Pipeline 2 reads this field directly as the user message to Claude.
+Pipeline 2 reads this field directly as the user prompt to LLM.
 
----
+Anything under a `## LLM special prompt` heading in the posting is treated as high-priority instructions by the generator.
 
-## 7. Workflow
+## 6. Workflow
 
-1. Create a new Jobs record; paste the job URL into **AD** (and/or paste the description into **Notes**).
-2. Click **Parse Job** → wait ~10 seconds → review the populated fields (Job, Company, Notes). Edit anything incorrect.
-3. Click **Generate Docs** → wait ~30 seconds → review **Letter Content** and **CV Content**. Edit to taste.
-4. Click **Compile** → wait ~10 seconds → two PDFs appear in the **Docs** attachment field.
-5. Download and review the PDFs, then apply.
+1. Create a new Jobs record; paste the job URL into **AD**, or paste the text into **Notes**.
+2. **Parse Job** → wait for the fields to fill in → review **Job**, **Company**, **Notes**. Correct anything wrong.
+3. **Generate Docs** → review **Letter Content** and **CV Content**. Edit to taste.
+4. **Compile Docs** → two PDFs appear in **Docs**.
+
+Watch `GET /api/v0/tasks` or `logs/app.log` while a pipeline runs.
