@@ -56,6 +56,8 @@ async def run_parse(
             f["jobs"]["notes"]: job.notes,
             f["jobs"]["company"]: [company_id],
         }
+        if job.type:
+            update[f["jobs"]["type"]] = job.type
         if contact_id:
             update[f["jobs"]["recipient"]] = [contact_id]
 

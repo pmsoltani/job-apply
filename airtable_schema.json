@@ -9,6 +9,7 @@
       "job": "Job",
       "company": "Company",
       "ad": "AD",
+      "type": "Type",
       "docs": "Docs",
       "notes": "Notes",
       "status": "Status",

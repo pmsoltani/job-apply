@@ -3,7 +3,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from src.configs import c
+from src.configs import JobType, c
 
 
 # Inline code spans on a single line, one or two backticks. Deliberately does not
@@ -55,6 +55,7 @@ class JobData(BaseModel):
     notes: str
     company: CompanyData
     contact: ContactData | None = None
+    type: JobType | None = None
 
 
 class GeneratedContent(BaseModel):

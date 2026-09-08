@@ -36,6 +36,14 @@ def _load_airtable_schema(path: Path) -> AirtableSchema:
     return AirtableSchema.model_validate_json(path.read_text())
 
 
+class JobType(StrEnum):
+    FULL_TIME = "Full-time"
+    PART_TIME = "Part-time"
+    CONTRACT = "Contract"
+    PLACEMENT = "Placement"
+    TEMPORARY = "Temporary"
+
+
 class CVStyle(StrEnum):
     MODERN = "modern"
     CLASSIC = "classic"
