@@ -18,7 +18,9 @@
       "llm": "Gemini",
       "prompt": "Prompt",
       "letter_content": "Letter Content",
-      "cv_content": "CV Content"
+      "cv_content": "CV Content",
+      "fitness": "Fitness",
+      "fitness_reasoning": "Reasoning"
     },
     "companies": {
       "company": "Company",

@@ -99,6 +99,8 @@ async def run_generate(
             {
                 f["jobs"]["letter_content"]: content.cover_letter_body,
                 f["jobs"]["cv_content"]: content.profile_intro,
+                f["jobs"]["fitness"]: content.job_fitness,
+                f["jobs"]["fitness_reasoning"]: content.job_fitness_reasoning,
             },
         )
 

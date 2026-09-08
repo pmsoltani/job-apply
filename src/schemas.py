@@ -21,6 +21,9 @@ _DESC_MODEL_REPLY = "What the model actually said, when ok"
 _DESC_MODEL_ERROR = "Failure detail, when not ok"
 _DESC_MODEL_STATUS_CODE = "HTTP status, for provider-side failures"
 
+_DESC_JOB_FITNESS = "Optional score of how well the candidate fits the job, 1-5"
+_DESC_JOB_REASONING = "Explanation for the job fitness score"
+
 
 class WebhookPayload(BaseModel):
     record_id: str
@@ -59,6 +62,8 @@ class JobData(BaseModel):
 
 
 class GeneratedContent(BaseModel):
+    job_fitness: int | None = Field(None, description=_DESC_JOB_FITNESS, ge=1, le=5)
+    job_fitness_reasoning: str | None = Field(None, description=_DESC_JOB_REASONING)
     cover_letter_body: str
     profile_intro: str
 
