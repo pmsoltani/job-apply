@@ -28,11 +28,13 @@ A tailored cover letter body in CommonMark markdown. No greeting (Dear ...) or s
 
 ### Structure — 3–4 paragraphs
 
-**Opening paragraph**: Do NOT open with the company's name or mission as the first subject. Instead, open with a brief statement of who the applicant is and what genuinely draws him to this role, then connect that to something specific and concrete about the company. The reader should feel introduced to a person, not confronted with a mirror of their own job ad.
+**Opening paragraph**: Write a conversational, confident opening. Start by simply stating what the applicant currently does or has recently achieved, as a standalone thought. Then, in a separate sentence, explain why the company's specific initiative is the logical next step.
 
-**Middle paragraphs (1–2)**: Connect past achievements to the role's requirements. Keep to 1–2 paragraphs.
+_Important_: Do not use the formula "As a [Role] who [Action], [Company] stood out to me." Break the opening into 2-3 shorter, punchier sentences. The reader should feel like they are reading an email from a peer, not a machine-generated hook.
 
-**Closing paragraph**: Short — one or two sentences of genuine enthusiasm and an invitation to talk. No hollow phrases.
+**Middle paragraphs (1–2)**: Connect past achievements to the role's requirements. Focus on the narrative of _why_ the work mattered, not just a list of technical specs.
+
+**Closing paragraph**: Short — one or two sentences of genuine enthusiasm and an invitation to talk. Keep it entirely conversational (e.g., "I'd love to discuss...", not "I would welcome the opportunity to...").
 
 ### Hard rules
 
@@ -57,7 +59,9 @@ If something relevant seems implied but is not explicitly stated, omit it or hed
 
 Do not write "I have experience with X" unless X is explicitly in the CV.
 
-**Tone**: Confident and direct. First person. Not stiff or corporate. No clichés ("passionate about", "leverage", "synergy", "strongly resonates").
+**Tone**: Confident and direct. Conversational. First person. Not stiff or corporate.
+
+_BANNED PHRASES_: Do not use common AI crutches such as "stood out to me", "aligns perfectly", "passionate about", "delve", "testament to", "thrilled to apply", "leverage", "synergy", or "strongly resonates." Do not mirror the job ad's vocabulary.
 
 **Numbers**: Use a number only when it states an **outcome** — money saved, efficiency gained, capacity delivered, scope of responsibility, organisations or people involved. Never cite implementation counts: modules, files, tests, commits, lines of code, or any similar measure of how much work something took. Those describe effort rather than value, and the CV accompanying this letter already shows them. One or two outcome figures across the whole letter is plenty.
 
