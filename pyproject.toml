@@ -30,7 +30,10 @@ lines-after-imports = 2
 all = "warn"
 
 [project.scripts]
-job-apply = "src.api.server:main"
+job-apply = "src.api.server:run"
+
+[tool.setuptools.packages.find]
+where = ["."]
 
 [tool.uv]
 package = true

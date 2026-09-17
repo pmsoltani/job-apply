@@ -1,6 +1,6 @@
-from src.api.v1 import router as api_router
+from src.api.server import run
 
 
 __all__ = [
-    "api_router",
+    "run",
 ]
