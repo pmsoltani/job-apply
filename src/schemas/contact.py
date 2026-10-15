@@ -1,3 +1,5 @@
+from typing import override
+
 from pydantic import Field, model_validator
 
 from src.configs import ContactTitle
@@ -19,21 +21,25 @@ class ContactBase(CommonModel):
             raise ValueError("At least one of first or last name must be provided.")
         return self
 
-
-class Contact(ContactBase):
-    id: RecordId
-    preferred: str | None = Field(None, alias="Preferred")
-
     @property
     def name(self) -> str | None:
         """Return the contact's name, if available."""
-        if self.preferred:
-            return self.preferred
         if self.title and self.last:
             return f"{self.title} {self.last}"
         if self.first and self.last:
             return f"{self.first} {self.last}"
         return self.first
+
+
+class Contact(ContactBase):
+    id: RecordId
+    preferred: str | None = Field(None, alias="Preferred")
+
+    @override
+    @property
+    def name(self) -> str | None:
+        """Return the contact's name, if available."""
+        return self.preferred or super().name
 
 
 class ContactCreate(ContactBase):

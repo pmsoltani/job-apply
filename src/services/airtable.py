@@ -105,7 +105,7 @@ class AirtableService:
             return existing[0]["id"]
 
         rec = self.contacts.create(contact.model_dump(by_alias=True))
-        lg.info("Created contact: %s %s (%s)", contact.first, contact.last, rec["id"])
+        lg.info("Created contact: %s (%s)", contact.name, rec["id"])
         return rec["id"]
 
     def get_contact(self, contact_id: RecordId) -> Contact:
