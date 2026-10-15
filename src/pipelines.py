@@ -2,7 +2,7 @@ import logging
 
 from src import tasks
 from src.configs import CVStyle, LetterStyle, c
-from src.schemas import CompanyCreate, ContactCreate, Letter, RecordId
+from src.schemas import CompanyCreate, ContactCreate, Job, Letter, RecordId, field_alias
 from src.services import AirtableService, GeneratorService, ParserService, TypstService
 from src.utils import clean_markdown, fetch_url
 
@@ -46,9 +46,9 @@ async def run_parse(
         update = job.model_dump(
             by_alias=True, exclude={"company", "contact"}, exclude_none=True
         )
-        update["Company"] = [company_id]
+        update[field_alias(Job, "company_ids")] = [company_id]
         if contact_id:
-            update["Recipient"] = [contact_id]
+            update[field_alias(Job, "contact_ids")] = [contact_id]
 
         airtable.update_job(job_id, update)
         lg.info("Done.")
@@ -130,8 +130,9 @@ async def run_compile(
         cv_pdf = typst.compile_cv(cv_content, cv_style)
 
         tasks.register(task_id, f"Uploading PDFs: {job.title}")
-        await airtable.upload_attachment(job_id, "Docs", "letter.pdf", letter_pdf)
-        await airtable.upload_attachment(job_id, "Docs", "cv.pdf", cv_pdf)
+        docs = field_alias(Job, "docs")
+        await airtable.upload_attachment(job_id, docs, "letter.pdf", letter_pdf)
+        await airtable.upload_attachment(job_id, docs, "cv.pdf", cv_pdf)
         lg.info("Done.")
 
     except Exception:  # noqa: BLE001 - background-task boundary, traceback is logged

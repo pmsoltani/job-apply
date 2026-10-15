@@ -8,6 +8,7 @@ from fastapi.responses import RedirectResponse
 from src.api.v1 import router as v1_router
 from src.configs import c
 from src.logger import logger_factory
+from src.services import AirtableService
 from src.utils import start_tunnel
 
 
@@ -20,6 +21,7 @@ lg = logger_factory(
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    await asyncio.to_thread(AirtableService().check_schema)
     tunnel_name = c.CLOUDFLARE_TUNNEL
     proc = await start_tunnel(tunnel_name, lg) if tunnel_name else None
     yield

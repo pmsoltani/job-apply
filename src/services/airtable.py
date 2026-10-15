@@ -1,12 +1,13 @@
 import base64
 import logging
-from collections.abc import Mapping
 from typing import Any
 
 import aiohttp
 from pyairtable import Api
 from pyairtable.api.types import RecordDict
 from pyairtable.formulas import match
+from pydantic import BaseModel
+from requests import HTTPError
 
 from src.configs import c
 from src.schemas import (
@@ -15,6 +16,7 @@ from src.schemas import (
     Contact,
     ContactCreate,
     Job,
+    JobLinks,
     PartialJob,
     RecordId,
 )
@@ -23,32 +25,42 @@ from src.schemas import (
 lg = logging.getLogger(c.APP_NAME)
 
 
-def first_link_id(fields: Mapping[str, Any], key: str) -> str | None:
-    """Return the first record id from a linked-record field, if any.
-
-    Linked records come either as bare id strings or as `{"id": ...}` dicts,
-    depending on the API options used to fetch them.
-    """
-    links = fields.get(key)
-    if not isinstance(links, list) or not links:
-        return None
-    first = links[0]
-    if isinstance(first, str):
-        return first
-    if isinstance(first, dict):
-        record_id = first.get("id")
-        if isinstance(record_id, str):
-            return record_id
-    return None
+def _aliases(*models: type[BaseModel]) -> set[str]:
+    """Return the Airtable field names the models map to, i.e. their aliases."""
+    return {f.alias for m in models for f in m.model_fields.values() if f.alias}
 
 
 class AirtableService:
     def __init__(self) -> None:
         api = Api(c.AIRTABLE_PAT)
         base = api.base(c.AIRTABLE_BASE_ID)
-        self.jobs = base.table(c.tables["jobs"])
-        self.companies = base.table(c.tables["companies"])
-        self.contacts = base.table(c.tables["contacts"])
+        self.jobs = base.table(c.AIRTABLE_JOBS_TABLE)
+        self.companies = base.table(c.AIRTABLE_COMPANIES_TABLE)
+        self.contacts = base.table(c.AIRTABLE_CONTACTS_TABLE)
+
+    def check_schema(self) -> None:
+        """Raise if a table or field the models map to is missing from the base."""
+        expected = [
+            (self.jobs, _aliases(Job, PartialJob)),
+            (self.companies, _aliases(Company)),
+            (self.contacts, _aliases(Contact)),
+        ]
+        missing: list[str] = []
+        for table, names in expected:
+            try:
+                actual = {f.name for f in table.schema().fields}
+            except KeyError:
+                missing.append(f"table '{table.name}'")
+                continue
+            except HTTPError as exc:
+                # Most likely the token lacks the `schema.bases:read` scope.
+                lg.warning("Skipped the Airtable schema check: %s", exc)
+                return
+            missing += [f"'{table.name}.{name}'" for name in sorted(names - actual)]
+
+        if missing:
+            raise RuntimeError(f"Airtable base is missing {', '.join(missing)}")
+        lg.info("Airtable schema check passed.")
 
     def _add_id(self, record: RecordDict) -> dict[str, Any]:
         """Add the record id to the fields dict for Pydantic validation."""
@@ -59,14 +71,13 @@ class AirtableService:
         return PartialJob.model_validate(self._add_id(rec))
 
     def get_job(self, job_id: RecordId) -> Job:
-        rec = self.jobs.get(job_id)
-        company_id = first_link_id(rec.get("fields", {}), c.fields["jobs"]["company"])
-        if not company_id:
+        fields = self._add_id(self.jobs.get(job_id))
+        links = JobLinks.model_validate(fields)
+        if not links.company_ids:
             raise ValueError(f"Job record {job_id} has no linked company.")
-        company = self.get_company(company_id)
-        contact_id = first_link_id(rec.get("fields", {}), c.fields["jobs"]["recipient"])
-        contact = self.get_contact(contact_id) if contact_id else None
-        fields = self._add_id(rec)
+        company = self.get_company(links.company_ids[0])
+        contact_ids = links.contact_ids
+        contact = self.get_contact(contact_ids[0]) if contact_ids else None
         return Job.model_validate({**fields, "company": company, "contact": contact})
 
     def update_job(self, job_id: RecordId, fields: dict[str, Any]) -> RecordId:

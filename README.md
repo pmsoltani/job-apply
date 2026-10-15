@@ -74,6 +74,9 @@ LLM_MODEL=gemini-3.5-flash
 # Airtable settings
 AIRTABLE_PAT=pat...            # airtable.com/create/tokens
 AIRTABLE_BASE_ID=app...        # from the URL when viewing your base
+# AIRTABLE_JOBS_TABLE=Jobs     # table names or IDs (tbl...)
+# AIRTABLE_COMPANIES_TABLE=Companies
+# AIRTABLE_CONTACTS_TABLE=Contacts
 
 # Server settings
 FASTAPI_HOST=localhost
@@ -86,29 +89,6 @@ MAX_TOKENS_GENERATOR=8192
 ```
 
 `LLM_PROVIDER` selects which pydantic-ai provider is built; `LLM_URL` is only needed to point the OpenAI provider at a non-OpenAI endpoint.
-
-### Airtable field names
-
-`airtable_schema.json` maps the names this app uses internally to your actual column names. If your columns differ, edit this file:
-
-```json
-{
-  "tables": {
-    "jobs": "Jobs",
-    "companies": "Companies",
-    "contacts": "Contacts"
-  },
-  "fields": {
-    "jobs": {
-      "job": "Job",
-      "ad": "AD",
-      "notes": "Notes",
-      "docs": "Docs",
-      "...": "..."
-    }
-  }
-}
-```
 
 ### Personal context
 

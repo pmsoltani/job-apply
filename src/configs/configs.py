@@ -1,15 +1,7 @@
-from functools import lru_cache
 from pathlib import Path
 from typing import Literal, Self, override
 
-from pydantic import (
-    BaseModel,
-    Field,
-    HttpUrl,
-    SecretStr,
-    computed_field,
-    model_validator,
-)
+from pydantic import Field, HttpUrl, SecretStr, computed_field, model_validator
 from pydantic_settings import (
     BaseSettings,
     DotEnvSettingsSource,
@@ -23,18 +15,6 @@ from src.configs.enums import LLMProvider
 _COUNTRY_CODES = {
     "GB": "UK",
 }
-
-
-class AirtableSchema(BaseModel):
-    """Shape of `airtable_schema.json`: table names and per-table field names."""
-
-    tables: dict[str, str]
-    fields: dict[str, dict[str, str]]
-
-
-@lru_cache(maxsize=1)
-def _load_airtable_schema(path: Path) -> AirtableSchema:
-    return AirtableSchema.model_validate_json(path.read_text())
 
 
 class Configs(BaseSettings):
@@ -111,19 +91,12 @@ class Configs(BaseSettings):
     AIRTABLE_PAT: str = Field(...)
     AIRTABLE_BASE_ID: str = Field(...)
     CONTENT_BASE_URL: str = "https://content.airtable.com"
-    AIRTABLE_SCHEMA_FILE: Path = BASE_DIR / "airtable_schema.json"
+    # Table names or IDs ("tbl..."). Field names are the aliases in `src/schemas`.
+    AIRTABLE_JOBS_TABLE: str = "Jobs"
+    AIRTABLE_COMPANIES_TABLE: str = "Companies"
+    AIRTABLE_CONTACTS_TABLE: str = "Contacts"
 
     COUNTRY_CODE_MAPPING: dict[str, str] = Field(default_factory=lambda: _COUNTRY_CODES)
-
-    @computed_field
-    @property
-    def tables(self) -> dict[str, str]:
-        return _load_airtable_schema(self.AIRTABLE_SCHEMA_FILE).tables
-
-    @computed_field
-    @property
-    def fields(self) -> dict[str, dict[str, str]]:
-        return _load_airtable_schema(self.AIRTABLE_SCHEMA_FILE).fields
 
     # --- LLM ---
     LLM_PROVIDER: LLMProvider = Field(...)
