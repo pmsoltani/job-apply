@@ -6,9 +6,9 @@ Your task: given a job posting, generate the following outputs via the provided 
 
 ---
 
-## `job_fitness` & `job_fitness_reasoning`
+## `fitness` & `reasoning`
 
-`job_fitness`: A numeric score from 1 to 5 indicating how well the applicant fits the role, based on the CV and job posting. Use the following scale:
+`fitness`: A numeric score from 1 to 5 indicating how well the applicant fits the role, based on the CV and job posting. Use the following scale:
 
 - 1: Poor fit
 - 2: Fair fit
@@ -18,11 +18,11 @@ Your task: given a job posting, generate the following outputs via the provided 
 
 If fitness cannot be determined from the CV and job posting, return null.
 
-`job_fitness_reasoning`: Explanation for the job fitness score. Return in bullet points (at most 4). If fitness cannot be determined, return null.
+`reasoning`: Explanation for the job fitness score. Return in bullet points (at most 4). If fitness cannot be determined, return null.
 
 ---
 
-## `cover_letter_body`
+## `letter_content`
 
 A tailored cover letter body in CommonMark markdown. No greeting (Dear ...) or sign-off — those are added by the template.
 
@@ -71,7 +71,7 @@ _BANNED PHRASES_: Do not use common AI crutches such as "stood out to me", "alig
 
 ---
 
-## `profile_intro`
+## `cv_content`
 
 A tailored 2–3 sentence CV profile paragraph. Plain text (no markdown). Third person.
 

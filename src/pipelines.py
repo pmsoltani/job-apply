@@ -28,12 +28,11 @@ async def run_parse(
             raw = await fetch_url(f"{c.JINA_BASE_URL}/{url}", c.TIMEOUT_SECONDS)
             source_text = clean_markdown(raw)
         else:
-            lg.error("[parse %s] Neither AD URL nor Notes is populated.", job_id)
+            lg.error("[parse %s] Neither job URL nor Notes is populated.", job_id)
             return
 
         job = await parser.parse(source_text, model=model)
-        job.url = job.url or url
-        tasks.register(task_id, f"Saving: {job.job} @ {job.company.name}")
+        tasks.register(task_id, f"Saving: {job.title} @ {job.company.name}")
 
         company_id = airtable.find_or_create_company(
             CompanyCreate.model_validate(job.company)
@@ -45,13 +44,13 @@ async def run_parse(
             )
 
         update = job.model_dump(
-            by_alias=True, exclude={"company", "contact", "prompt"}, exclude_none=True
+            by_alias=True, exclude={"company", "contact"}, exclude_none=True
         )
         update["Company"] = [company_id]
         update["Recipient"] = [contact_id] if contact_id else None
 
         airtable.update_job(job_id, update)
-        lg.info("[parse %s] Done. Job: %s", job_id, job.job)
+        lg.info("[parse %s] Done. Job: %s", job_id, job.title)
 
     except Exception:  # noqa: BLE001 - background-task boundary, traceback is logged
         lg.exception("[parse %s] Pipeline 1 failed.", job_id)
@@ -75,12 +74,11 @@ async def run_generate(
             lg.error("[generate %s] Prompt field is empty.", job_id)
             return
 
-        job_title = job.job or job_id
-        tasks.register(task_id, f"Generating content: {job_title}")
+        tasks.register(task_id, f"Generating content: {job.title}")
 
         content = await generator.generate(job_prompt, model=model)
 
-        tasks.register(task_id, f"Saving content: {job_title}")
+        tasks.register(task_id, f"Saving content: {job.title}")
         airtable.update_job(
             job_id, content.model_dump(by_alias=True, exclude_unset=True)
         )
@@ -110,14 +108,11 @@ async def run_compile(
             lg.error("[compile %s] Empty letter Content! Run /generate first.", job_id)
             return
 
-        job_title = job.job
-        tasks.register(task_id, f"Compiling PDFs: {job_title}")
+        tasks.register(task_id, f"Compiling PDFs: {job.title}")
 
         to_address = job.address or ""
         if not to_address.strip():
-            lg.warning(
-                "[compile %s] Company '%s' has no address!", job_id, job.company.name
-            )
+            lg.warning("[compile %s] Job '%s' has no address!", job_id, job.title)
 
         to_name = "Hiring Manager"
         if job.contact:
@@ -126,7 +121,7 @@ async def run_compile(
         letter_data = Letter(
             to_name=to_name,
             to_address=to_address,
-            subject=job_title,
+            subject=job.title,
             body=letter_content,
         )
 
@@ -134,7 +129,7 @@ async def run_compile(
         letter_pdf = typst.compile_letter(letter_data, style=letter_style)
         cv_pdf = typst.compile_cv(cv_content, cv_style)
 
-        tasks.register(task_id, f"Uploading PDFs: {job_title}")
+        tasks.register(task_id, f"Uploading PDFs: {job.title}")
         await airtable.upload_attachment(job_id, "Docs", "letter.pdf", letter_pdf)
         await airtable.upload_attachment(job_id, "Docs", "cv.pdf", cv_pdf)
 
