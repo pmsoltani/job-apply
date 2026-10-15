@@ -6,8 +6,11 @@ from src.configs import ContactTitle
 from src.schemas.common import CommonModel, RecordId
 
 
+_DESC_TITLE = "The contact's title, only if the job posting states it explicitly."
+
+
 class ContactBase(CommonModel):
-    title: ContactTitle | None = Field(None, alias="Title")
+    title: ContactTitle | None = Field(None, alias="Title", description=_DESC_TITLE)
     first: str | None = Field(None, alias="First")
     last: str | None = Field(None, alias="Last")
     role: str | None = Field(None, alias="Role")

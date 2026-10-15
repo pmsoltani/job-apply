@@ -1,4 +1,5 @@
 import re
+from typing import Any
 
 from pydantic import Field, field_validator
 
@@ -12,19 +13,51 @@ from src.schemas.contact import Contact, ContactBase
 _CODE_SPAN = re.compile(r"`{1,2}([^`\n]+?)`{1,2}")
 
 
-_DESC_JOB_FITNESS = "Optional score of how well the candidate fits the job, 1-5"
-_DESC_JOB_REASONING = "Explanation for the job fitness score"
+_DESC_FITNESS = (
+    "How well the applicant fits the role, based on the CV and the job posting: "
+    "1 poor, 2 fair, 3 good, 4 very good, 5 excellent fit. Null if it cannot be "
+    "determined."
+)
+_DESC_REASONING = (
+    "Explanation for the fitness score, as bullet points (at most 4). Null if the "
+    "fitness cannot be determined."
+)
+_DESC_CV_CONTENT = (
+    "A tailored 2-3 sentence CV profile paragraph. Plain text (no markdown), third "
+    "person. It replaces the default intro on the CV for this application only."
+)
+_DESC_LETTER_CONTENT = (
+    "A tailored cover letter body in CommonMark markdown. No greeting (Dear ...) or "
+    "sign-off: the template adds those."
+)
+
+_DESC_TITLE = (
+    "The **exact** job title as stated in the posting: the title only, not the "
+    "description."
+)
+_DESC_REF = "The job reference number or ID, only if explicitly stated in the posting."
+_DESC_TYPE = "The job type, only if explicitly stated in the posting."
+_DESC_NOTES = (
+    "The job posting body, copied **verbatim**: do NOT summarise, paraphrase, or "
+    "condense anything. Only strip navigation menus, cookie notices, image captions, "
+    "and other page boilerplate that is not part of the job posting itself. All "
+    "substantive content (responsibilities, requirements, qualifications, benefits) "
+    "must be reproduced exactly as stated in the posting."
+)
+_DESC_CONTACT = "The hiring contact, only if explicitly stated in the posting."
 
 
 class GeneratedContent(CommonModel):
     fitness: int | None = Field(
-        None, description=_DESC_JOB_FITNESS, ge=1, le=5, alias="Fitness"
+        None, description=_DESC_FITNESS, ge=1, le=5, alias="Fitness"
     )
-    reasoning: str | None = Field(
-        None, description=_DESC_JOB_REASONING, alias="Reasoning"
+    reasoning: str | None = Field(None, description=_DESC_REASONING, alias="Reasoning")
+    cv_content: str | None = Field(
+        None, description=_DESC_CV_CONTENT, alias="CV Content"
     )
-    cv_content: str | None = Field(None, alias="CV Content")
-    letter_content: str | None = Field(None, alias="Letter Content")
+    letter_content: str | None = Field(
+        None, description=_DESC_LETTER_CONTENT, alias="Letter Content"
+    )
 
     @field_validator("letter_content", mode="after")
     @classmethod
@@ -44,12 +77,12 @@ class GeneratedContent(CommonModel):
 
 
 class JobBase(CommonModel):
-    title: str = Field(..., alias="Job")
-    ref: str | None = Field(None, alias="Ref")
+    title: str = Field(..., alias="Job", description=_DESC_TITLE)
+    ref: str | None = Field(None, alias="Ref", description=_DESC_REF)
     company: CompanyBase
-    type: JobType | None = Field(None, alias="Type")
-    notes: str | None = Field(None, alias="Notes")
-    contact: ContactBase | None = None
+    type: JobType | None = Field(None, alias="Type", description=_DESC_TYPE)
+    notes: str | None = Field(None, alias="Notes", description=_DESC_NOTES)
+    contact: ContactBase | None = Field(None, description=_DESC_CONTACT)
 
 
 class PartialJob(CommonModel):
@@ -59,7 +92,14 @@ class PartialJob(CommonModel):
     notes: str | None = Field(None, alias="Notes")
 
 
-class Job(GeneratedContent, JobBase):
+class JobLinks(CommonModel):
+    """A job's linked-record fields, as Airtable returns them: lists of record IDs."""
+
+    company_ids: list[RecordId] = Field(default_factory=list, alias="Company")
+    contact_ids: list[RecordId] = Field(default_factory=list, alias="Recipient")
+
+
+class Job(GeneratedContent, JobBase, JobLinks):
     id: RecordId
     url: str | None = Field(None, alias="URL")
     company: Company
@@ -67,3 +107,4 @@ class Job(GeneratedContent, JobBase):
     contact: Contact | None = None
     llm: str | None = Field(None, alias="LLM Notes")
     prompt: str | None = Field(None, alias="Prompt")
+    docs: list[dict[str, Any]] = Field(default_factory=list, alias="Docs")
