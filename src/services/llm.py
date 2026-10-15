@@ -94,7 +94,7 @@ class ParserService(LLMService):
             model_settings=ModelSettings(max_tokens=c.MAX_TOKENS_PARSER),
         )
         assert isinstance(result.output, JobBase)
-        lg.info("Extracted job: %s @ %s", result.output.job, result.output.company.name)
+        lg.info("Parsed job: %s @ %s", result.output.title, result.output.company.name)
         return result.output
 
 
