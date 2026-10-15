@@ -28,7 +28,7 @@ async def run_parse(
             raw = await fetch_url(f"{c.JINA_BASE_URL}/{url}", c.TIMEOUT_SECONDS)
             source_text = clean_markdown(raw)
         else:
-            lg.error("[parse %s] Neither job URL nor Notes is populated.", job_id)
+            lg.error("Neither job URL nor Notes is populated.")
             return
 
         job = await parser.parse(source_text, model=model)
@@ -47,13 +47,14 @@ async def run_parse(
             by_alias=True, exclude={"company", "contact"}, exclude_none=True
         )
         update["Company"] = [company_id]
-        update["Recipient"] = [contact_id] if contact_id else None
+        if contact_id:
+            update["Recipient"] = [contact_id]
 
         airtable.update_job(job_id, update)
-        lg.info("[parse %s] Done. Job: %s", job_id, job.title)
+        lg.info("Done.")
 
     except Exception:  # noqa: BLE001 - background-task boundary, traceback is logged
-        lg.exception("[parse %s] Pipeline 1 failed.", job_id)
+        lg.exception("Parser pipeline failed.")
     finally:
         tasks.unregister(task_id)
 
@@ -71,7 +72,7 @@ async def run_generate(
 
         job_prompt = job.prompt or ""
         if not job_prompt.strip():
-            lg.error("[generate %s] Prompt field is empty.", job_id)
+            lg.error("Prompt field is empty.")
             return
 
         tasks.register(task_id, f"Generating content: {job.title}")
@@ -82,11 +83,10 @@ async def run_generate(
         airtable.update_job(
             job_id, content.model_dump(by_alias=True, exclude_unset=True)
         )
-
-        lg.info("[generate %s] Done.", job_id)
+        lg.info("Done.")
 
     except Exception:  # noqa: BLE001 - background-task boundary, traceback is logged
-        lg.exception("[generate %s] Pipeline 2 failed.", job_id)
+        lg.exception("Generator pipeline failed.")
     finally:
         tasks.unregister(task_id)
 
@@ -105,14 +105,14 @@ async def run_compile(
         cv_content = (job.cv_content or "").strip()
         letter_content = (job.letter_content or "").strip()
         if not letter_content:
-            lg.error("[compile %s] Empty letter Content! Run /generate first.", job_id)
+            lg.error("Empty letter Content! Run /generate first.")
             return
 
         tasks.register(task_id, f"Compiling PDFs: {job.title}")
 
         to_address = job.address or ""
         if not to_address.strip():
-            lg.warning("[compile %s] Job '%s' has no address!", job_id, job.title)
+            lg.warning("Job has no address!")
 
         to_name = "Hiring Manager"
         if job.contact:
@@ -132,10 +132,9 @@ async def run_compile(
         tasks.register(task_id, f"Uploading PDFs: {job.title}")
         await airtable.upload_attachment(job_id, "Docs", "letter.pdf", letter_pdf)
         await airtable.upload_attachment(job_id, "Docs", "cv.pdf", cv_pdf)
-
-        lg.info("[compile %s] Done.", job_id)
+        lg.info("Done.")
 
     except Exception:  # noqa: BLE001 - background-task boundary, traceback is logged
-        lg.exception("[compile %s] Pipeline 3 failed.", job_id)
+        lg.exception("Compiler pipeline failed.")
     finally:
         tasks.unregister(task_id)
