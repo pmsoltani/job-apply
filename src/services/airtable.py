@@ -9,7 +9,15 @@ from pyairtable.api.types import RecordDict
 from pyairtable.formulas import match
 
 from src.configs import c
-from src.schemas import CompanyData, ContactData
+from src.schemas import (
+    Company,
+    CompanyCreate,
+    Contact,
+    ContactCreate,
+    Job,
+    PartialJob,
+    RecordId,
+)
 
 
 lg = logging.getLogger(c.APP_NAME)
@@ -48,68 +56,69 @@ class AirtableService:
         self.companies = base.table(c.tables["companies"])
         self.contacts = base.table(c.tables["contacts"])
 
-    def get_job(self, job_id: str) -> RecordDict:
-        return self.jobs.get(job_id)
+    def _add_id(self, record: RecordDict) -> dict[str, Any]:
+        """Add the record id to the fields dict for Pydantic validation."""
+        return {**record.get("fields", {}), "id": record.get("id")}
 
-    def update_job(self, job_id: str, fields: dict[str, Any]) -> RecordDict:
-        return self.jobs.update(job_id, fields)
+    def get_partial_job(self, job_id: RecordId) -> PartialJob:
+        rec = self.jobs.get(job_id)
+        return PartialJob.model_validate(self._add_id(rec))
 
-    def find_or_create_company(self, data: CompanyData) -> str:
-        f = c.fields["companies"]
-        existing = self.companies.all(formula=match({f["company"]: data.name}))
+    def get_job(self, job_id: RecordId) -> Job:
+        rec = self.jobs.get(job_id)
+        company_id = first_link_id(rec.get("fields", {}), c.fields["jobs"]["company"])
+        company = self.get_company(company_id) if company_id else None
+        contact_id = first_link_id(rec.get("fields", {}), c.fields["jobs"]["recipient"])
+        contact = self.get_contact(contact_id) if contact_id else None
+        fields = self._add_id(rec)
+        return Job.model_validate({**fields, "company": company, "contact": contact})
+
+    def update_job(self, job_id: RecordId, fields: dict[str, Any]) -> RecordId:
+        rec = self.jobs.update(job_id, fields)
+        return rec["id"]
+
+    def find_or_create_company(self, company: CompanyCreate) -> RecordId:
+        fields = company.model_dump(
+            by_alias=True, include={"name", "country"}, exclude_none=True
+        )
+        existing = self.companies.all(formula=match(fields))
         if existing:
             return existing[0]["id"]
 
-        new_fields: dict[str, Any] = {f["company"]: data.name}
-        if data.url:
-            new_fields[f["url"]] = data.url
-        if data.country:
-            new_fields[f["country"]] = data.country
-        if data.notes:
-            new_fields[f["notes"]] = data.notes
+        rec = self.companies.create(company.model_dump(by_alias=True))
+        lg.info("Created company: %s (%s)", company.name, rec["id"])
+        return rec["id"]
 
-        record = self.companies.create(new_fields)
-        lg.info("Created company: %s (%s)", data.name, record["id"])
-        return record["id"]
+    def get_company(self, company_id: RecordId) -> Company:
+        rec = self.companies.get(company_id)
+        return Company.model_validate(self._add_id(rec))
 
-    def get_company(self, company_id: str) -> RecordDict:
-        return self.companies.get(company_id)
+    def find_or_create_contact(self, contact: ContactCreate) -> RecordId | None:
+        existing = None
+        if contact.email:
+            fields = contact.model_dump(include={"email"})
+            existing = self.contacts.all(formula=match(fields))
 
-    def find_or_create_contact(self, data: ContactData, job_id: str) -> str | None:
-        f = c.fields["contacts"]
-
-        if data.email:
-            existing = self.contacts.all(formula=match({f["email"]: data.email}))
-        elif data.first and data.last:
-            existing = self.contacts.all(
-                formula=f'AND({{{f["first"]}}} = "{data.first}", {{{f["last"]}}} = "{data.last}")'
+        if not existing and (contact.first and contact.last):
+            fields = contact.model_dump(
+                by_alias=True, include={"first", "last"}, exclude_none=True
             )
-        else:
-            return None
+            existing = self.contacts.all(formula=match(fields))
 
         if existing:
             return existing[0]["id"]
 
-        new_fields: dict[str, Any] = {}
-        for attr, key in (
-            ("title", "title"),
-            ("first", "first"),
-            ("last", "last"),
-            ("role", "role"),
-            ("email", "email"),
-            ("url", "url"),
-        ):
-            if getattr(data, attr):
-                new_fields[f[key]] = getattr(data, attr)
-        new_fields[f["jobs"]] = [job_id]
+        rec = self.contacts.create(contact.model_dump(by_alias=True))
+        lg.info("Created contact: %s %s (%s)", contact.first, contact.last, rec["id"])
+        return rec["id"]
 
-        record = self.contacts.create(new_fields)
-        lg.info("Created contact: %s %s (%s)", data.first, data.last, record["id"])
-        return record["id"]
+    def get_contact(self, contact_id: RecordId) -> Contact:
+        rec = self.contacts.get(contact_id)
+        return Contact.model_validate(self._add_id(rec))
 
     async def upload_attachment(
         self,
-        record_id: str,
+        record_id: RecordId,
         field_name: str,
         filename: str,
         file_bytes: bytes,

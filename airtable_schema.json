@@ -7,15 +7,17 @@
   "fields": {
     "jobs": {
       "job": "Job",
+      "ref": "Ref",
       "company": "Company",
-      "ad": "AD",
+      "url": "URL",
       "type": "Type",
       "docs": "Docs",
+      "address": "Address",
       "notes": "Notes",
       "status": "Status",
       "apply": "Apply",
       "recipient": "Recipient",
-      "llm": "Gemini",
+      "llm": "LLM Notes",
       "prompt": "Prompt",
       "letter_content": "Letter Content",
       "cv_content": "CV Content",
@@ -26,7 +28,6 @@
       "company": "Company",
       "url": "URL",
       "notes": "Notes",
-      "address": "Address",
       "docs": "Docs",
       "country": "Country",
       "jobs": "Jobs"
@@ -40,6 +41,7 @@
       "email": "Email",
       "phone": "Phone",
       "url": "URL",
+      "preferred": "Preferred",
       "jobs": "Jobs"
     }
   }

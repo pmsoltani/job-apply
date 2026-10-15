@@ -12,7 +12,7 @@ from pydantic_ai.models import Model
 from pydantic_ai.settings import ModelSettings
 
 from src.configs import LLMProvider, c
-from src.schemas import GeneratedContent, JobData, ModelCheckResponse
+from src.schemas import GeneratedContent, JobBase, ModelCheckResponse
 
 
 lg = logging.getLogger(c.APP_NAME)
@@ -83,17 +83,17 @@ class ParserService(LLMService):
         # Self-hosted LLM might serialize nested objects (`company`) as JSON
         # strings in tool arguments, which fails validation. Asking for JSON in
         # the response body via `PromptedOutput` solves that.
-        self._agent: Agent[None, JobData | str] = Agent(
-            model, output_type=PromptedOutput(JobData), system_prompt=prompt
+        self._agent: Agent[None, JobBase | str] = Agent(
+            model, output_type=PromptedOutput(JobBase), system_prompt=prompt
         )
 
-    async def extract_job_data(self, text: str, model: str | None = None) -> JobData:
+    async def parse(self, text: str, model: str | None = None) -> JobBase:
         result = await self._agent.run(
             text,
             model=self._build_model(model) if model else None,
             model_settings=ModelSettings(max_tokens=c.MAX_TOKENS_PARSER),
         )
-        assert isinstance(result.output, JobData)
+        assert isinstance(result.output, JobBase)
         lg.info("Extracted job: %s @ %s", result.output.job, result.output.company.name)
         return result.output
 
@@ -127,7 +127,7 @@ class GeneratorService(LLMService):
             )
         return ModelSettings(max_tokens=c.MAX_TOKENS_GENERATOR)
 
-    async def generate_documents(
+    async def generate(
         self, job_prompt: str, model: str | None = None
     ) -> GeneratedContent:
         result = await self._agent.run(
@@ -136,5 +136,5 @@ class GeneratorService(LLMService):
             model_settings=self._model_settings(),
         )
         assert isinstance(result.output, GeneratedContent)
-        lg.info("Generated documents (usage: %s)", result.usage())
+        lg.info("Generated content (usage: %s)", result.usage())
         return result.output

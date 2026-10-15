@@ -1,17 +1,9 @@
 import logging
-from typing import Any
 
 from src import tasks
-from src.configs import CVStyle, c
-from src.schemas import LetterData
-from src.services import (
-    AirtableService,
-    GeneratorService,
-    ParserService,
-    TypstService,
-    field_str,
-    first_link_id,
-)
+from src.configs import CVStyle, LetterStyle, c
+from src.schemas import CompanyCreate, ContactCreate, Letter, RecordId
+from src.services import AirtableService, GeneratorService, ParserService, TypstService
 from src.utils import clean_markdown, fetch_url
 
 
@@ -19,47 +11,44 @@ lg = logging.getLogger(c.APP_NAME)
 
 
 async def run_parse(
-    job_id: str,
+    job_id: RecordId,
     airtable: AirtableService,
     parser: ParserService,
     model: str | None = None,
 ) -> None:
     task_id = f"parse:{job_id}"
     tasks.register(task_id, f"Parsing job posting ({job_id})")
-    f = c.fields
     try:
-        record = airtable.get_job(job_id)
-        fields = record.get("fields", {})
+        partial_job = airtable.get_partial_job(job_id)
+        notes, url = partial_job.notes, partial_job.url
 
-        ad_url = field_str(fields, f["jobs"]["ad"])
-        notes = field_str(fields, f["jobs"]["notes"])
-
-        if notes.strip():
+        if notes and notes.strip():
             source_text = clean_markdown(notes)
-        elif ad_url.strip():
-            raw = await fetch_url(f"{c.JINA_BASE_URL}/{ad_url}", c.TIMEOUT_SECONDS)
+        elif url and url.strip():
+            raw = await fetch_url(f"{c.JINA_BASE_URL}/{url}", c.TIMEOUT_SECONDS)
             source_text = clean_markdown(raw)
         else:
             lg.error("[parse %s] Neither AD URL nor Notes is populated.", job_id)
             return
 
-        job = await parser.extract_job_data(source_text, model=model)
+        job = await parser.parse(source_text, model=model)
+        job.url = job.url or url
         tasks.register(task_id, f"Saving: {job.job} @ {job.company.name}")
 
-        company_id = airtable.find_or_create_company(job.company)
+        company_id = airtable.find_or_create_company(
+            CompanyCreate.model_validate(job.company)
+        )
         contact_id = None
         if job.contact:
-            contact_id = airtable.find_or_create_contact(job.contact, job_id=job_id)
+            contact_id = airtable.find_or_create_contact(
+                ContactCreate.model_validate(job.contact)
+            )
 
-        update: dict[str, Any] = {
-            f["jobs"]["job"]: job.job,
-            f["jobs"]["notes"]: job.notes,
-            f["jobs"]["company"]: [company_id],
-        }
-        if job.type:
-            update[f["jobs"]["type"]] = job.type
-        if contact_id:
-            update[f["jobs"]["recipient"]] = [contact_id]
+        update = job.model_dump(
+            by_alias=True, exclude={"company", "contact", "prompt"}, exclude_none=True
+        )
+        update["Company"] = [company_id]
+        update["Recipient"] = [contact_id] if contact_id else None
 
         airtable.update_job(job_id, update)
         lg.info("[parse %s] Done. Job: %s", job_id, job.job)
@@ -71,37 +60,29 @@ async def run_parse(
 
 
 async def run_generate(
-    job_id: str,
+    job_id: RecordId,
     airtable: AirtableService,
     generator: GeneratorService,
     model: str | None = None,
 ) -> None:
     task_id = f"generate:{job_id}"
     tasks.register(task_id, f"Generating content ({job_id})")
-    f = c.fields
     try:
-        record = airtable.get_job(job_id)
-        fields = record.get("fields", {})
+        job = airtable.get_job(job_id)
 
-        job_prompt = field_str(fields, f["jobs"]["prompt"])
+        job_prompt = job.prompt or ""
         if not job_prompt.strip():
             lg.error("[generate %s] Prompt field is empty.", job_id)
             return
 
-        job_title = field_str(fields, f["jobs"]["job"], job_id)
+        job_title = job.job or job_id
         tasks.register(task_id, f"Generating content: {job_title}")
 
-        content = await generator.generate_documents(job_prompt, model=model)
+        content = await generator.generate(job_prompt, model=model)
 
         tasks.register(task_id, f"Saving content: {job_title}")
         airtable.update_job(
-            job_id,
-            {
-                f["jobs"]["letter_content"]: content.cover_letter_body,
-                f["jobs"]["cv_content"]: content.profile_intro,
-                f["jobs"]["fitness"]: content.job_fitness,
-                f["jobs"]["fitness_reasoning"]: content.job_fitness_reasoning,
-            },
+            job_id, content.model_dump(by_alias=True, exclude_unset=True)
         )
 
         lg.info("[generate %s] Done.", job_id)
@@ -113,58 +94,49 @@ async def run_generate(
 
 
 async def run_compile(
-    job_id: str,
+    job_id: RecordId,
     airtable: AirtableService,
     typst: TypstService,
     cv_style: CVStyle = CVStyle.CLASSIC,
 ) -> None:
     task_id = f"compile:{job_id}"
     tasks.register(task_id, f"Compiling PDFs ({job_id})")
-    f = c.fields
     try:
-        record = airtable.get_job(job_id)
-        fields = record.get("fields", {})
+        job = airtable.get_job(job_id)
 
-        cv_content = field_str(fields, f["jobs"]["cv_content"]).strip()
-        letter_content = field_str(fields, f["jobs"]["letter_content"]).strip()
+        cv_content = (job.cv_content or "").strip()
+        letter_content = (job.letter_content or "").strip()
         if not letter_content:
             lg.error("[compile %s] Empty letter Content! Run /generate first.", job_id)
             return
 
-        job_title = field_str(fields, f["jobs"]["job"])
+        job_title = job.job
         tasks.register(task_id, f"Compiling PDFs: {job_title}")
 
-        to_address = ""
-        company_id = first_link_id(fields, f["jobs"]["company"])
-        if company_id:
-            company_data = airtable.get_company(company_id).get("fields", {})
-            to_address = field_str(company_data, f["companies"]["address"])
-            if not to_address.strip():
-                c_name = field_str(company_data, f["companies"]["company"])
-                lg.warning("[compile %s] Company '%s' has no address!", job_id, c_name)
+        to_address = job.address or ""
+        if not to_address.strip():
+            lg.warning(
+                "[compile %s] Company '%s' has no address!", job_id, job.company.name
+            )
 
         to_name = "Hiring Manager"
-        contact_id = first_link_id(fields, f["jobs"]["recipient"])
-        if contact_id:
-            contact_data = airtable.contacts.get(contact_id).get("fields", {})
-            contact_title = field_str(contact_data, f["contacts"]["title"])
-            contact_last = field_str(contact_data, f["contacts"]["last"])
-            if contact_title and contact_last:
-                to_name = f"{contact_title} {contact_last}"
+        if job.contact:
+            to_name = job.contact.name or to_name
 
-        letter_data = LetterData(
+        letter_data = Letter(
             to_name=to_name,
             to_address=to_address,
             subject=job_title,
             body=letter_content,
         )
-        letter_pdf = typst.build_cover_letter(letter_data)
-        cv_pdf = typst.build_cv(cv_content, cv_style)
+
+        letter_style = LetterStyle.get_style(job.company.country)
+        letter_pdf = typst.compile_letter(letter_data, style=letter_style)
+        cv_pdf = typst.compile_cv(cv_content, cv_style)
 
         tasks.register(task_id, f"Uploading PDFs: {job_title}")
-        docs_field = f["jobs"]["docs"]
-        await airtable.upload_attachment(job_id, docs_field, "letter.pdf", letter_pdf)
-        await airtable.upload_attachment(job_id, docs_field, "cv.pdf", cv_pdf)
+        await airtable.upload_attachment(job_id, "Docs", "letter.pdf", letter_pdf)
+        await airtable.upload_attachment(job_id, "Docs", "cv.pdf", cv_pdf)
 
         lg.info("[compile %s] Done.", job_id)
 
