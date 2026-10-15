@@ -1,8 +1,6 @@
 from pydantic import BaseModel, Field
 
 
-_DESC_MODEL = "Optional override for the configured LLM model"
-
 _DESC_MODEL_URL = "Base URL, or null for the provider default"
 _DESC_MODEL_LATENCY_MS = "Round-trip time, if the call completed"
 _DESC_MODEL_REPLY = "What the model actually said, when ok"

@@ -23,12 +23,6 @@ from src.schemas import (
 lg = logging.getLogger(c.APP_NAME)
 
 
-def field_str(fields: Mapping[str, Any], key: str, default: str = "") -> str:
-    """Read a text field from a record's `fields`, narrowing the type to `str`."""
-    value = fields.get(key, default)
-    return value if isinstance(value, str) else default
-
-
 def first_link_id(fields: Mapping[str, Any], key: str) -> str | None:
     """Return the first record id from a linked-record field, if any.
 
@@ -67,7 +61,9 @@ class AirtableService:
     def get_job(self, job_id: RecordId) -> Job:
         rec = self.jobs.get(job_id)
         company_id = first_link_id(rec.get("fields", {}), c.fields["jobs"]["company"])
-        company = self.get_company(company_id) if company_id else None
+        if not company_id:
+            raise ValueError(f"Job record {job_id} has no linked company.")
+        company = self.get_company(company_id)
         contact_id = first_link_id(rec.get("fields", {}), c.fields["jobs"]["recipient"])
         contact = self.get_contact(contact_id) if contact_id else None
         fields = self._add_id(rec)
@@ -93,10 +89,10 @@ class AirtableService:
         rec = self.companies.get(company_id)
         return Company.model_validate(self._add_id(rec))
 
-    def find_or_create_contact(self, contact: ContactCreate) -> RecordId | None:
+    def find_or_create_contact(self, contact: ContactCreate) -> RecordId:
         existing = None
         if contact.email:
-            fields = contact.model_dump(include={"email"})
+            fields = contact.model_dump(by_alias=True, include={"email"})
             existing = self.contacts.all(formula=match(fields))
 
         if not existing and (contact.first and contact.last):
