@@ -108,14 +108,16 @@ class GeneratorService(LLMService):
     def _load_context(self) -> str:
         parts = [
             c.GENERATOR_PROMPT_FILE.read_text(encoding="utf-8"),
-            "\n\n---\n\n# Personal Context\n",
+            "---",
+            "# Personal Context",
         ]
         for path in c.context_files:
             if not path.exists():
                 lg.warning("Context file not found, skipping: %s", path)
                 continue
-            parts.append(f"\n## {path.name}\n\n{path.read_text(encoding='utf-8')}")
-        return "\n".join(parts)
+            content = path.read_text(encoding="utf-8")
+            parts.extend([f'<document name="{path.name}">', content, "</document>"])
+        return "\n\n".join(p.strip() for p in parts)
 
     def _model_settings(self) -> ModelSettings:
         if c.LLM_PROVIDER == LLMProvider.ANTHROPIC:
