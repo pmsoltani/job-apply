@@ -1,4 +1,3 @@
-from enum import StrEnum
 from functools import lru_cache
 from pathlib import Path
 from typing import Literal, Self, override
@@ -18,6 +17,8 @@ from pydantic_settings import (
     SettingsConfigDict,
 )
 
+from src.configs.enums import LLMProvider
+
 
 _COUNTRY_CODES = {
     "GB": "UK",
@@ -34,25 +35,6 @@ class AirtableSchema(BaseModel):
 @lru_cache(maxsize=1)
 def _load_airtable_schema(path: Path) -> AirtableSchema:
     return AirtableSchema.model_validate_json(path.read_text())
-
-
-class JobType(StrEnum):
-    FULL_TIME = "Full-time"
-    PART_TIME = "Part-time"
-    CONTRACT = "Contract"
-    PLACEMENT = "Placement"
-    TEMPORARY = "Temporary"
-
-
-class CVStyle(StrEnum):
-    MODERN = "modern"
-    CLASSIC = "classic"
-
-
-class LLMProvider(StrEnum):
-    ANTHROPIC = "anthropic"
-    GOOGLE = "google"
-    OPENAI = "openai"
 
 
 class Configs(BaseSettings):
@@ -87,7 +69,7 @@ class Configs(BaseSettings):
     APP_ENV: Literal["dev", "prod"] = Field("dev", alias="env")
 
     # --- Paths ---
-    BASE_DIR: Path = Path(__file__).parent.parent
+    BASE_DIR: Path = Path(__file__).parent.parent.parent
     CV_DIR: Path = BASE_DIR.parent / "cv"
     CONTEXT_DIR: Path = BASE_DIR / "context"
     PROMPTS_DIR: Path = BASE_DIR / "prompts"
