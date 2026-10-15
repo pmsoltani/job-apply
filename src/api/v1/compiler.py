@@ -3,7 +3,7 @@ from fastapi import APIRouter, BackgroundTasks
 from src.api.v1.dependencies import AirtableDep, TypstDep
 from src.configs import CVStyle
 from src.pipelines import run_compile
-from src.schemas import WebhookPayload
+from src.schemas import RecordId, WebhookPayload
 
 
 router = APIRouter()
@@ -23,7 +23,7 @@ async def compile_docs(
 
 @router.get("", status_code=202)
 async def compile_docs_get(
-    record_id: str,
+    record_id: RecordId,
     background_tasks: BackgroundTasks,
     airtable: AirtableDep,
     typst: TypstDep,

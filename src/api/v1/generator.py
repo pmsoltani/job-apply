@@ -2,7 +2,7 @@ from fastapi import APIRouter, BackgroundTasks
 
 from src.api.v1.dependencies import AirtableDep, GeneratorDep
 from src.pipelines import run_generate
-from src.schemas import WebhookPayload
+from src.schemas import RecordId, WebhookPayload
 
 
 router = APIRouter()
@@ -23,7 +23,7 @@ async def generate(
 
 @router.get("", status_code=202)
 async def generate_get(
-    record_id: str,
+    record_id: RecordId,
     background_tasks: BackgroundTasks,
     airtable: AirtableDep,
     generator: GeneratorDep,

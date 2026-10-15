@@ -53,6 +53,6 @@ router.include_router(generator_router, prefix="/generate", tags=["generator"])
 router.include_router(compiler_router, prefix="/compile", tags=["compiler"])
 
 
-___all__ = [
+__all__ = [
     "router",
 ]
