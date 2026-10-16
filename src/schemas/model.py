@@ -9,6 +9,7 @@ _DESC_MODEL_STATUS_CODE = "HTTP status, for provider-side failures"
 
 
 class ModelsResponse(BaseModel):
+    label: str
     provider: str
     model: str
 

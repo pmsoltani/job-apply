@@ -69,6 +69,8 @@ ADDRESS="123 Example St\nCity, Country"
 LLM_PROVIDER=google            # anthropic | google | openai
 LLM_API_KEY=...
 LLM_MODEL=gemini-3.5-flash
+# LLM_PARSER_MODEL=gemini-3.5-flash-lite  # optional override for parsing
+# LLM_GENERATOR_MODEL=gemini-4-argon      # optional override for generation
 # LLM_URL=...                  # only for OpenAI-compatible endpoints (vLLM, Ollama, ...)
 
 # Airtable settings
@@ -120,16 +122,16 @@ cloudflared tunnel --url http://localhost:8000
 
 ## 3. API reference
 
-| Method   | Path                  | Description                                            |
-| -------- | --------------------- | ------------------------------------------------------ |
-| GET      | `/api/v0/`            | App name, version, description                         |
-| GET      | `/api/v0/health`      | Liveness — `{"status": "ok"}`                          |
-| GET      | `/api/v0/model`       | Configured provider and model                          |
-| GET      | `/api/v0/model/check` | Live round-trip to verify provider, model, URL and key |
-| GET      | `/api/v0/tasks`       | Background tasks currently running                     |
-| GET/POST | `/api/v0/parse`       | Pipeline 1                                             |
-| GET/POST | `/api/v0/generate`    | Pipeline 2                                             |
-| GET/POST | `/api/v0/compile`     | Pipeline 3                                             |
+| Method   | Path                   | Description                                 |
+| -------- | ---------------------- | ------------------------------------------- |
+| GET      | `/api/v0/`             | App name, version, description              |
+| GET      | `/api/v0/health`       | Liveness — `{"status": "ok"}`               |
+| GET      | `/api/v0/models`       | Configured provider and models              |
+| GET      | `/api/v0/models/check` | Live round-trip to verify LLM configuration |
+| GET      | `/api/v0/tasks`        | Background tasks currently running          |
+| GET/POST | `/api/v0/parse`        | Pipeline 1                                  |
+| GET/POST | `/api/v0/generate`     | Pipeline 2                                  |
+| GET/POST | `/api/v0/compile`      | Pipeline 3                                  |
 
 The three pipelines return `202 Accepted` immediately and run in the background.
 
@@ -148,19 +150,21 @@ The three pipelines return `202 Accepted` immediately and run in the background.
 
 `cv_style` is `classic` (default) or `modern`.
 
-### `GET /api/v0/model/check`
+### `GET /api/v0/models/check`
 
 ```json
-{
-  "ok": true,
-  "provider": "google",
-  "model": "gemini-3.5-flash",
-  "url": null,
-  "latency_ms": 1690,
-  "reply": "pong",
-  "error": null,
-  "status_code": null
-}
+[
+  {
+    "ok": true,
+    "provider": "google",
+    "model": "gemini-3.5-flash",
+    "url": null,
+    "latency_ms": 1690,
+    "reply": "pong",
+    "error": null,
+    "status_code": null
+  }
+]
 ```
 
 On failure, `ok` is `false` and `error` carries the provider's message — a wrong model name returns `status_code: 404`, a bad key `401`, an unreachable URL a connection error.

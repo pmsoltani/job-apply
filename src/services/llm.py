@@ -21,9 +21,8 @@ lg = logging.getLogger(c.APP_NAME)
 class LLMService:
     """Base class: builds the correct pydantic-ai model from Configs, with explicit API key."""
 
-    def _build_model(self, model_name: str | None = None) -> Model:
+    def _build_model(self, model_name: str) -> Model:
         url = str(c.LLM_URL) if c.LLM_URL else None
-        model_name = model_name or c.LLM_MODEL
         key = c.LLM_API_KEY.get_secret_value()
         if c.LLM_PROVIDER == LLMProvider.ANTHROPIC:
             from pydantic_ai.models.anthropic import AnthropicModel
@@ -45,13 +44,16 @@ class LLMService:
             return OpenAIChatModel(model_name, provider=provider)
         raise ValueError(f"Unsupported LLM provider: {c.LLM_PROVIDER}")
 
-    async def check(self, model: str | None = None) -> ModelCheckResponse:
+    async def check(self) -> list[ModelCheckResponse]:
+        """Verify all models with a live check."""
+        return [await self.check_model(m) for m in set(c.LLM_ALL_MODELS.values())]
+
+    async def check_model(self, model: str) -> ModelCheckResponse:
         """Verify the configured provider, model, URL and key with a live check."""
-        model_name = model or c.LLM_MODEL
         result = ModelCheckResponse(
             ok=False,
             provider=c.LLM_PROVIDER,
-            model=model_name,
+            model=model,
             url=str(c.LLM_URL) if c.LLM_URL else None,
         )
         started = time.perf_counter()
@@ -72,13 +74,13 @@ class LLMService:
             result.ok = True
             result.reply = run.output.strip()[:100]
         result.latency_ms = int((time.perf_counter() - started) * 1000)
-        lg.info("Model check (%s / %s): ok=%s", c.LLM_PROVIDER, model_name, result.ok)
+        lg.info("Model check (%s / %s): ok=%s", c.LLM_PROVIDER, model, result.ok)
         return result
 
 
 class ParserService(LLMService):
     def __init__(self) -> None:
-        model = self._build_model()
+        model = self._build_model(c.LLM_PARSER_MODEL)
         prompt = c.PARSER_PROMPT_FILE.read_text(encoding="utf-8")
         # Self-hosted LLM might serialize nested objects (`company`) as JSON
         # strings in tool arguments, which fails validation. Asking for JSON in
@@ -100,7 +102,7 @@ class ParserService(LLMService):
 
 class GeneratorService(LLMService):
     def __init__(self) -> None:
-        model = self._build_model()
+        model = self._build_model(c.LLM_GENERATOR_MODEL)
         self._agent: Agent[None, GeneratedContent | str] = Agent(
             model, output_type=GeneratedContent, system_prompt=self._load_context()
         )

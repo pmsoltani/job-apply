@@ -27,15 +27,18 @@ async def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
-@router.get("/model", response_model=ModelsResponse)
-async def show_model() -> ModelsResponse:
-    return ModelsResponse(provider=c.LLM_PROVIDER, model=c.LLM_MODEL)
+@router.get("/models", response_model=list[ModelsResponse])
+async def show_model() -> list[ModelsResponse]:
+    return [
+        ModelsResponse(label=label, provider=c.LLM_PROVIDER, model=model)
+        for label, model in c.LLM_ALL_MODELS.items()
+    ]
 
 
-@router.get("/model/check", response_model=ModelCheckResponse)
-async def check_model(llm: LLMDep, model: str | None = None) -> ModelCheckResponse:
-    """Round-trip a tiny prompt to check if the provider, model, URL and key work."""
-    return await llm.check(model)
+@router.get("/models/check", response_model=list[ModelCheckResponse])
+async def check_models(llm: LLMDep) -> list[ModelCheckResponse]:
+    """Round-trip a tiny prompt to check if the LLM is configured correctly."""
+    return await llm.check()
 
 
 @router.get("/tasks", response_model=TasksResponse)

@@ -102,7 +102,17 @@ class Configs(BaseSettings):
     LLM_PROVIDER: LLMProvider = Field(...)
     LLM_API_KEY: SecretStr = SecretStr("not required")
     LLM_MODEL: str = Field(...)
+    LLM_PARSER_MODEL: str = Field(default_factory=lambda data: data["LLM_MODEL"])
+    LLM_GENERATOR_MODEL: str = Field(default_factory=lambda data: data["LLM_MODEL"])
     LLM_URL: HttpUrl | None = None
+
+    @computed_field
+    @property
+    def LLM_ALL_MODELS(self) -> dict[str, str]:
+        return {
+            "parser": self.LLM_PARSER_MODEL,
+            "generator": self.LLM_GENERATOR_MODEL,
+        }
 
     # The parser echoes the job posting back verbatim in `notes`, so its output is
     # roughly as long as the posting itself; 2048 truncates mid-JSON.
