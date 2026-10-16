@@ -40,7 +40,7 @@ Git/
 
 Without it, `parse` and `generate` still work but `compile` fails. Set `CV_DIR` in `.env` if you keep the templates elsewhere.
 
-## 1. Setup
+## Setup
 
 ```bash
 git clone <this repo> job-apply
@@ -106,13 +106,13 @@ context/
 
 `context/personal/` is excluded from version control, so a fresh clone has no CV to work from. The generator will still run, but the results will be generic and unusable; populate this directory first.
 
-## 2. Running locally
+## Running locally
 
 ```powershell
 uv run job-apply        # or: uv run main.py
 ```
 
-You can verify the LLM configuration by visiting `http://localhost:8000/api/v0/model/check`. It performs a real round-trip and reports `ok`, latency, and the provider's own error text if the key, URL or model name is wrong.
+You can verify the LLM configuration by visiting `http://localhost:8000/api/v0/models/check`. It performs a real round-trip and reports `ok`, latency, and the provider's own error text if the key, URL or model name is wrong.
 
 If `CLOUDFLARE_TUNNEL` is set, the named tunnel starts with the app and stops with it (no second terminal needed). For an ad-hoc tunnel with a throwaway URL instead:
 
@@ -120,18 +120,18 @@ If `CLOUDFLARE_TUNNEL` is set, the named tunnel starts with the app and stops wi
 cloudflared tunnel --url http://localhost:8000
 ```
 
-## 3. API reference
+## API reference
 
-| Method   | Path                   | Description                                 |
-| -------- | ---------------------- | ------------------------------------------- |
-| GET      | `/api/v0/`             | App name, version, description              |
-| GET      | `/api/v0/health`       | Liveness — `{"status": "ok"}`               |
-| GET      | `/api/v0/models`       | Configured provider and models              |
-| GET      | `/api/v0/models/check` | Live round-trip to verify LLM configuration |
-| GET      | `/api/v0/tasks`        | Background tasks currently running          |
-| GET/POST | `/api/v0/parse`        | Pipeline 1                                  |
-| GET/POST | `/api/v0/generate`     | Pipeline 2                                  |
-| GET/POST | `/api/v0/compile`      | Pipeline 3                                  |
+| Method   | Path                   | Description                                  |
+| -------- | ---------------------- | -------------------------------------------- |
+| GET      | `/api/v0/`             | App name, version, description               |
+| GET      | `/api/v0/health`       | Liveness — `{"status": "ok"}`                |
+| GET      | `/api/v0/models`       | Configured provider and models               |
+| GET      | `/api/v0/models/check` | Live round-trip to verify LLM configuration  |
+| GET      | `/api/v0/tasks`        | Background tasks currently running           |
+| GET/POST | `/api/v0/parse`        | Pipeline 1: Parse job postings               |
+| GET/POST | `/api/v0/generate`     | Pipeline 2: Generate CV intro & cover letter |
+| GET/POST | `/api/v0/compile`      | Pipeline 3: Compile the PDF files            |
 
 The three pipelines return `202 Accepted` immediately and run in the background.
 
@@ -184,7 +184,7 @@ On failure, `ok` is `false` and `error` carries the provider's message — a wro
 }
 ```
 
-## 4. Airtable buttons
+## Airtable buttons
 
 Add the following Button fields to the Jobs table, with the action set to _Open URL_ using the formula:
 
@@ -196,25 +196,7 @@ Repeat for `/generate` and `/compile`.
 
 > If you use an ad-hoc `trycloudflare.com` tunnel, its URL changes every session and all three buttons need updating. A named tunnel or a deployed host avoids this.
 
-## 5. The `Prompt` field
-
-In the Jobs table, the `Prompt` field should be a Formula field combining all relevant columns. Example:
-
-```plaintext
-"--- New Job Application ---" &
-"\n\n## Title: " & {Job} &
-"\n## Employer: " & {Company} &
-IF({LLM Notes}, "\n## LLM special prompt: " & {LLM Notes}) &
-"\n## Description:\n" & {Notes} &
-IF({Comp. Info}, "\n\n## Employer Description:\n" & {Comp. Info}) &
-"\n\n--- End of Job Application ---"
-```
-
-Pipeline 2 reads this field directly as the user prompt to LLM.
-
-Anything under a `## LLM special prompt` heading in the posting is treated as high-priority instructions by the generator.
-
-## 6. Workflow
+## Workflow
 
 1. Create a new Jobs record; paste the job URL into **AD**, or paste the text into **Notes**.
 2. **Parse Job** → wait for the fields to fill in → review **Job**, **Type**, **Company**, **Notes**. Correct anything wrong.

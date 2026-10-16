@@ -104,7 +104,20 @@ class Job(GeneratedContent, JobBase, JobLinks):
     url: str | None = Field(None, alias="URL")
     company: Company
     address: str | None = Field(None, alias="Address")
+    notes: str = Field(..., alias="Notes")
     contact: Contact | None = None
     llm: str | None = Field(None, alias="LLM Notes")
-    prompt: str | None = Field(None, alias="Prompt")
     docs: list[dict[str, Any]] = Field(default_factory=list, alias="Docs")
+
+    def make_prompt(self) -> str:
+        """A prompt that can be used to regenerate the job application content."""
+        company = self.company.name
+        parts = [
+            f"# Title: {self.title}",
+            f"**Company:** {company}",
+            f"**USER INSTRUCTIONS:** {self.llm}" if self.llm else "",
+            f"## Description\n\n{self.notes}",
+            f"## About {company}\n\n{self.company.notes}" if self.company.notes else "",
+        ]
+        posting = "\n\n".join(p.strip() for p in parts if p.strip())
+        return f"<job_posting>\n{posting}\n</job_posting>"

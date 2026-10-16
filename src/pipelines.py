@@ -69,15 +69,8 @@ async def run_generate(
     tasks.register(task_id, f"Generating content ({job_id})")
     try:
         job = airtable.get_job(job_id)
-
-        job_prompt = job.prompt or ""
-        if not job_prompt.strip():
-            lg.error("Prompt field is empty.")
-            return
-
         tasks.register(task_id, f"Generating content: {job.title}")
-
-        content = await generator.generate(job_prompt, model=model)
+        content = await generator.generate(job.make_prompt(), model=model)
 
         tasks.register(task_id, f"Saving content: {job.title}")
         airtable.update_job(
