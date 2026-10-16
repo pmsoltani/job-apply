@@ -42,7 +42,8 @@ _DESC_NOTES = (
     "condense anything. Only strip navigation menus, cookie notices, image captions, "
     "and other page boilerplate that is not part of the job posting itself. All "
     "substantive content (responsibilities, requirements, qualifications, benefits) "
-    "must be reproduced exactly as stated in the posting."
+    "must be reproduced exactly as stated in the posting. Leave out the section that "
+    "describes the company as it belongs in the company's notes, not here."
 )
 _DESC_CONTACT = "The hiring contact, only if explicitly stated in the posting."
 
