@@ -4,7 +4,13 @@ from src.schemas.contact import Contact, ContactBase, ContactCreate
 from src.schemas.job import GeneratedContent, Job, JobBase, JobLinks, PartialJob
 from src.schemas.letter import Letter
 from src.schemas.model import ModelCheckResponse, ModelsResponse
-from src.schemas.task import TasksResponse, TaskStatus, WebhookPayload
+from src.schemas.task import (
+    QuestionPayload,
+    QuestionResponse,
+    TasksResponse,
+    TaskStatus,
+    WebhookPayload,
+)
 
 
 __all__ = [
@@ -23,6 +29,8 @@ __all__ = [
     "ModelCheckResponse",
     "ModelsResponse",
     "PartialJob",
+    "QuestionPayload",
+    "QuestionResponse",
     "RecordId",
     "TaskStatus",
     "TasksResponse",

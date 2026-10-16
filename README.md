@@ -94,7 +94,7 @@ MAX_TOKENS_GENERATOR=8192
 
 ### Personal context
 
-Everything in `context/` is concatenated into the generator's system prompt.
+Everything in `context/` goes into the system prompts for generating content and answering questions, after each one's instructions and the shared rules in `prompts/writing_rules.md`.
 
 ```plaintext
 context/
@@ -122,16 +122,17 @@ cloudflared tunnel --url http://localhost:8000
 
 ## API reference
 
-| Method   | Path                   | Description                                  |
-| -------- | ---------------------- | -------------------------------------------- |
-| GET      | `/api/v0/`             | App name, version, description               |
-| GET      | `/api/v0/health`       | Liveness — `{"status": "ok"}`                |
-| GET      | `/api/v0/models`       | Configured provider and models               |
-| GET      | `/api/v0/models/check` | Live round-trip to verify LLM configuration  |
-| GET      | `/api/v0/tasks`        | Background tasks currently running           |
-| GET/POST | `/api/v0/parse`        | Pipeline 1: Parse job postings               |
-| GET/POST | `/api/v0/generate`     | Pipeline 2: Generate CV intro & cover letter |
-| GET/POST | `/api/v0/compile`      | Pipeline 3: Compile the PDF files            |
+| Method   | Path                      | Description                                  |
+| -------- | ------------------------- | -------------------------------------------- |
+| GET      | `/api/v0/`                | App name, version, description               |
+| GET      | `/api/v0/health`          | Liveness: `{"status": "ok"}`                 |
+| GET      | `/api/v0/models`          | Configured provider and models               |
+| GET      | `/api/v0/models/check`    | Live round-trip to verify LLM configuration  |
+| GET      | `/api/v0/tasks`           | Background tasks currently running           |
+| GET/POST | `/api/v0/parse`           | Pipeline 1: Parse job postings               |
+| GET/POST | `/api/v0/generate`        | Pipeline 2: Generate CV intro & cover letter |
+| GET/POST | `/api/v0/compile`         | Pipeline 3: Compile the PDF files            |
+| POST     | `/api/v0/generate/answer` | Answer an application form question          |
 
 The three pipelines return `202 Accepted` immediately and run in the background.
 
@@ -168,6 +169,27 @@ The three pipelines return `202 Accepted` immediately and run in the background.
 ```
 
 On failure, `ok` is `false` and `error` carries the provider's message — a wrong model name returns `status_code: 404`, a bad key `401`, an unreachable URL a connection error.
+
+### `POST /api/v0/generate/answer`
+
+For the extra questions some application forms ask. Unlike the pipelines, it waits for the answer and returns it, ready to paste into the form. Put any length limit in the question itself; `record_id` is optional and tailors the answer to that job and its cover letter.
+
+```json
+{
+  "question": "Why do you want to work here? (max 150 words)",
+  "record_id": "recXXXXXX"
+}
+```
+
+```json
+{
+  "question": "Why do you want to work here? (max 150 words)",
+  "record_id": "recXXXXXX",
+  "answer": "..."
+}
+```
+
+If the personal context doesn't cover what the question asks, the answer starts with `NOTE:` and says what is missing instead.
 
 ### `GET /api/v0/tasks`
 

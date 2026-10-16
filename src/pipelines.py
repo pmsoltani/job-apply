@@ -84,6 +84,30 @@ async def run_generate(
         tasks.unregister(task_id)
 
 
+async def run_answer(
+    question: str,
+    airtable: AirtableService,
+    generator: GeneratorService,
+    job_id: RecordId | None = None,
+) -> str:
+    task_id = f"answer:{job_id or 'general'}"
+    tasks.register(task_id, "Answering a question")
+    try:
+        job = airtable.get_job(job_id) if job_id else None
+        parts = []
+        if job:
+            tasks.register(task_id, f"Answering a question: {job.title}")
+            parts.append(job.make_prompt())
+            if job.letter_content:
+                parts.append(f"<cover_letter>\n{job.letter_content}\n</cover_letter>")
+        parts.append(f"<question>\n{question}\n</question>")
+        answer = await generator.answer("\n\n".join(parts))
+        lg.info("Done.")
+        return answer
+    finally:
+        tasks.unregister(task_id)
+
+
 async def run_compile(
     job_id: RecordId,
     airtable: AirtableService,

@@ -55,6 +55,8 @@ class Configs(BaseSettings):
     PROMPTS_DIR: Path = BASE_DIR / "prompts"
     PARSER_PROMPT_FILE: Path = PROMPTS_DIR / "parser_prompt.md"
     GENERATOR_PROMPT_FILE: Path = PROMPTS_DIR / "generator_prompt.md"
+    ANSWER_PROMPT_FILE: Path = PROMPTS_DIR / "answer_prompt.md"
+    WRITING_RULES_FILE: Path = PROMPTS_DIR / "writing_rules.md"
 
     @computed_field
     @property

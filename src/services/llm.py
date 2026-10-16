@@ -1,5 +1,6 @@
 import logging
 import time
+from pathlib import Path
 
 from pydantic_ai import Agent, PromptedOutput
 from pydantic_ai.exceptions import (
@@ -85,12 +86,12 @@ class ParserService(LLMService):
         # Self-hosted LLM might serialize nested objects (`company`) as JSON
         # strings in tool arguments, which fails validation. Asking for JSON in
         # the response body via `PromptedOutput` solves that.
-        self._agent: Agent[None, JobBase | str] = Agent(
+        self._parser_agent: Agent[None, JobBase | str] = Agent(
             model, output_type=PromptedOutput(JobBase), system_prompt=prompt
         )
 
     async def parse(self, text: str, model: str | None = None) -> JobBase:
-        result = await self._agent.run(
+        result = await self._parser_agent.run(
             text,
             model=self._build_model(model) if model else None,
             model_settings=ModelSettings(max_tokens=c.MAX_TOKENS_PARSER),
@@ -103,22 +104,35 @@ class ParserService(LLMService):
 class GeneratorService(LLMService):
     def __init__(self) -> None:
         model = self._build_model(c.LLM_GENERATOR_MODEL)
-        self._agent: Agent[None, GeneratedContent | str] = Agent(
-            model, output_type=GeneratedContent, system_prompt=self._load_context()
+        context = self._load_context()
+        self._generator_agent: Agent[None, GeneratedContent | str] = Agent(
+            model,
+            output_type=GeneratedContent,
+            system_prompt=self._system_prompt(c.GENERATOR_PROMPT_FILE, context),
+        )
+        self._answer_agent: Agent[None, str] = Agent(
+            model,
+            output_type=str,
+            system_prompt=self._system_prompt(c.ANSWER_PROMPT_FILE, context),
         )
 
-    def _load_context(self) -> str:
+    def _system_prompt(self, prompt_file: Path, context: str) -> str:
+        """The agent's own instructions, then the shared writing rules and context."""
         parts = [
-            c.GENERATOR_PROMPT_FILE.read_text(encoding="utf-8"),
-            "---",
-            "# Personal Context",
+            prompt_file.read_text(encoding="utf-8"),
+            c.WRITING_RULES_FILE.read_text(encoding="utf-8"),
+            context,
         ]
+        return "\n\n---\n\n".join(p.strip() for p in parts)
+
+    def _load_context(self) -> str:
+        parts = ["# Personal Context"]
         for path in c.context_files:
             if not path.exists():
                 lg.warning("Context file not found, skipping: %s", path)
                 continue
             content = path.read_text(encoding="utf-8")
-            parts.extend([f'<document name="{path.name}">', content, "</document>"])
+            parts.append(f'<document name="{path.name}">\n{content}\n</document>')
         return "\n\n".join(p.strip() for p in parts)
 
     def _model_settings(self) -> ModelSettings:
@@ -134,11 +148,21 @@ class GeneratorService(LLMService):
     async def generate(
         self, job_prompt: str, model: str | None = None
     ) -> GeneratedContent:
-        result = await self._agent.run(
+        result = await self._generator_agent.run(
             job_prompt,
             model=self._build_model(model) if model else None,
             model_settings=self._model_settings(),
         )
         assert isinstance(result.output, GeneratedContent)
         lg.info("Generated content (usage: %s)", result.usage())
+        return result.output
+
+    async def answer(self, prompt: str, model: str | None = None) -> str:
+        result = await self._answer_agent.run(
+            prompt,
+            model=self._build_model(model) if model else None,
+            model_settings=self._model_settings(),
+        )
+        assert isinstance(result.output, str)
+        lg.info("Answered question (usage: %s)", result.usage())
         return result.output

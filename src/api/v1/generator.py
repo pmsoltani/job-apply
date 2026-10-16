@@ -1,8 +1,8 @@
 from fastapi import APIRouter, BackgroundTasks
 
 from src.api.v1.dependencies import AirtableDep, GeneratorDep
-from src.pipelines import run_generate
-from src.schemas import RecordId, WebhookPayload
+from src.pipelines import run_answer, run_generate
+from src.schemas import QuestionPayload, QuestionResponse, RecordId, WebhookPayload
 
 
 router = APIRouter()
@@ -35,3 +35,14 @@ async def generate_get(
         airtable,
         generator,
     )
+
+
+@router.post("/answer")
+async def answer_question(
+    payload: QuestionPayload,
+    airtable: AirtableDep,
+    generator: GeneratorDep,
+) -> QuestionResponse:
+    """Answer an application form question from the personal context."""
+    answer = await run_answer(payload.question, airtable, generator, payload.record_id)
+    return QuestionResponse.model_validate(payload.model_dump() | {"answer": answer})
