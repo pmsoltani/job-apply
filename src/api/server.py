@@ -21,7 +21,7 @@ lg = logger_factory(
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await asyncio.to_thread(AirtableService().check_schema)
+    await AirtableService().check_schema()
     tunnel_name = c.CLOUDFLARE_TUNNEL
     proc = await start_tunnel(tunnel_name, lg) if tunnel_name else None
     yield

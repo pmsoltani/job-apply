@@ -17,7 +17,7 @@ async def run_parse(
     model: str | None = None,
 ) -> None:
     with tasks.background(f"parse:{job_id}", "Loading the job posting"):
-        partial_job = airtable.get_partial_job(job_id)
+        partial_job = await airtable.get_partial_job(job_id)
         notes, url = partial_job.notes, partial_job.url
 
         if notes and notes.strip():
@@ -33,12 +33,12 @@ async def run_parse(
         job = await parser.parse(source_text, model=model)
         tasks.update(f"Saving: {job.title} @ {job.company.name}")
 
-        company_id = airtable.find_or_create_company(
+        company_id = await airtable.find_or_create_company(
             CompanyCreate.model_validate(job.company)
         )
         contact_id = None
         if job.contact:
-            contact_id = airtable.find_or_create_contact(
+            contact_id = await airtable.find_or_create_contact(
                 ContactCreate.model_validate(job.contact)
             )
 
@@ -49,7 +49,7 @@ async def run_parse(
         if contact_id:
             update[field_alias(Job, "contact_ids")] = [contact_id]
 
-        airtable.update_job(job_id, update)
+        await airtable.update_job(job_id, update)
         lg.info("Done.")
 
 
@@ -60,12 +60,12 @@ async def run_generate(
     model: str | None = None,
 ) -> None:
     with tasks.background(f"generate:{job_id}", "Loading the job"):
-        job = airtable.get_job(job_id)
+        job = await airtable.get_job(job_id)
         tasks.update(f"Generating content: {job.title}")
         content = await generator.generate(job.make_prompt(), model=model)
 
         tasks.update("Saving content")
-        airtable.update_job(
+        await airtable.update_job(
             job_id, content.model_dump(by_alias=True, exclude_unset=True)
         )
         lg.info("Done.")
@@ -79,7 +79,7 @@ async def run_answer(
 ) -> str:
     first_status = "Loading the job" if job_id else "Answering a question"
     with tasks.track(f"answer:{job_id or 'general'}", first_status):
-        job = airtable.get_job(job_id) if job_id else None
+        job = await airtable.get_job(job_id) if job_id else None
         parts = []
         if job:
             tasks.update(f"Answering a question: {job.title}")
@@ -99,7 +99,7 @@ async def run_compile(
     cv_style: CVStyle = CVStyle.CLASSIC,
 ) -> None:
     with tasks.background(f"compile:{job_id}", "Loading the job"):
-        job = airtable.get_job(job_id)
+        job = await airtable.get_job(job_id)
 
         cv_content = (job.cv_content or "").strip()
         letter_content = (job.letter_content or "").strip()
@@ -125,8 +125,8 @@ async def run_compile(
         )
 
         letter_style = LetterStyle.get_style(job.company.country)
-        letter_pdf = typst.compile_letter(letter_data, style=letter_style)
-        cv_pdf = typst.compile_cv(cv_content, cv_style)
+        letter_pdf = await typst.compile_letter(letter_data, style=letter_style)
+        cv_pdf = await typst.compile_cv(cv_content, cv_style)
 
         tasks.update("Uploading PDFs")
         docs = field_alias(Job, "docs")

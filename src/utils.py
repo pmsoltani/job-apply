@@ -1,8 +1,11 @@
 import asyncio
+import functools
 import json
 import re
 import subprocess
+from collections.abc import Callable, Coroutine
 from logging import Logger
+from typing import Any
 
 import httpx2
 
@@ -15,6 +18,19 @@ JINA_HEADERS = {
     "x-md-link-style": "discarded",
     "x-retain-images": "none",
 }
+
+
+def in_thread[**P, R](fn: Callable[P, R]) -> Callable[P, Coroutine[Any, Any, R]]:
+    """Run a blocking function in a worker thread, so it doesn't block the event loop.
+
+    The thread gets a copy of the current context, so log records keep the task id.
+    """
+
+    @functools.wraps(fn)
+    async def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
+        return await asyncio.to_thread(fn, *args, **kwargs)
+
+    return wrapper
 
 
 def _flatten_html(fragment: str) -> str:

@@ -6,6 +6,7 @@ from pathlib import Path
 
 from src.configs import CVStyle, LetterStyle, c
 from src.schemas import Letter
+from src.utils import in_thread
 
 
 lg = logging.getLogger(c.APP_NAME)
@@ -22,6 +23,9 @@ class TypstService:
         except subprocess.CalledProcessError as e:
             raise RuntimeError(f"typst compile failed:\n{e.stderr}") from e
 
+    # `asyncio.create_subprocess_exec` would be the native async route, but uvicorn
+    # runs a SelectorEventLoop on Windows when reloading, which can't do subprocesses.
+    @in_thread
     def compile_letter(self, letter_data: Letter, style: LetterStyle) -> bytes:
         letter_dir = c.CV_DIR / "letter" / style
         json_str = letter_data.model_dump_json(by_alias=True)
@@ -30,6 +34,7 @@ class TypstService:
             self._run_typst(letter_dir / "main.typ", output, data=json_str)
             return output.read_bytes()
 
+    @in_thread
     def compile_cv(self, cv_intro: str | None, style: CVStyle) -> bytes:
         cv_dir = c.CV_DIR / "cv" / style
         json_str = json.dumps({"intro": cv_intro}, ensure_ascii=False)

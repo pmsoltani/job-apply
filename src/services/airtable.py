@@ -20,6 +20,7 @@ from src.schemas import (
     PartialJob,
     RecordId,
 )
+from src.utils import in_thread
 
 
 lg = logging.getLogger(c.APP_NAME)
@@ -38,6 +39,7 @@ class AirtableService:
         self.companies = base.table(c.AIRTABLE_COMPANIES_TABLE)
         self.contacts = base.table(c.AIRTABLE_CONTACTS_TABLE)
 
+    @in_thread
     def check_schema(self) -> None:
         """Raise if a table or field the models map to is missing from the base."""
         expected = [
@@ -66,10 +68,12 @@ class AirtableService:
         """Add the record id to the fields dict for Pydantic validation."""
         return {**record.get("fields", {}), "id": record.get("id")}
 
+    @in_thread
     def get_partial_job(self, job_id: RecordId) -> PartialJob:
         rec = self.jobs.get(job_id)
         return PartialJob.model_validate(self._add_id(rec))
 
+    @in_thread
     def get_job(self, job_id: RecordId) -> Job:
         fields = self._add_id(self.jobs.get(job_id))
         links = JobLinks.model_validate(fields)
@@ -80,10 +84,12 @@ class AirtableService:
         contact = self.get_contact(contact_ids[0]) if contact_ids else None
         return Job.model_validate({**fields, "company": company, "contact": contact})
 
+    @in_thread
     def update_job(self, job_id: RecordId, fields: dict[str, Any]) -> RecordId:
         rec = self.jobs.update(job_id, fields)
         return rec["id"]
 
+    @in_thread
     def find_or_create_company(self, company: CompanyCreate) -> RecordId:
         fields = company.model_dump(
             by_alias=True, include={"name", "country"}, exclude_none=True
@@ -97,9 +103,11 @@ class AirtableService:
         return rec["id"]
 
     def get_company(self, company_id: RecordId) -> Company:
+        # Remains threaded because it may be called from get_job
         rec = self.companies.get(company_id)
         return Company.model_validate(self._add_id(rec))
 
+    @in_thread
     def find_or_create_contact(self, contact: ContactCreate) -> RecordId:
         existing = None
         if contact.email:
@@ -120,6 +128,7 @@ class AirtableService:
         return rec["id"]
 
     def get_contact(self, contact_id: RecordId) -> Contact:
+        # Remains threaded because it may be called from get_job
         rec = self.contacts.get(contact_id)
         return Contact.model_validate(self._add_id(rec))
 
