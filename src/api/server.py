@@ -14,7 +14,7 @@ from src.utils import start_tunnel
 
 lg = logger_factory(
     name=c.APP_NAME,
-    log_file=c.BASE_DIR / "logs" / "app.log",
+    log_file=c.LOG_FILE,
     logger_level=logging.DEBUG if c.APP_ENV == "dev" else logging.INFO,
 )
 

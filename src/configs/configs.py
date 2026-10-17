@@ -50,6 +50,7 @@ class Configs(BaseSettings):
 
     # --- Paths ---
     BASE_DIR: Path = Path(__file__).parent.parent.parent
+    LOG_FILE: Path = BASE_DIR / "logs" / "app.log"
     CV_DIR: Path = BASE_DIR.parent / "cv"
     CONTEXT_DIR: Path = BASE_DIR / "context"
     PROMPTS_DIR: Path = BASE_DIR / "prompts"
