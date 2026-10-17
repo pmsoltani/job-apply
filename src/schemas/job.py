@@ -85,6 +85,12 @@ class JobBase(CommonModel):
     notes: str | None = Field(None, alias="Notes", description=_DESC_NOTES)
     contact: ContactBase | None = Field(None, description=_DESC_CONTACT)
 
+    @property
+    def subject(self) -> str:
+        """The subject line for the cover letter."""
+        ref = f" ({self.ref})" if self.ref else ""
+        return self.title + ref
+
 
 class PartialJob(CommonModel):
     id: RecordId

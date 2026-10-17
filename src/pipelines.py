@@ -120,7 +120,7 @@ async def run_compile(
         letter_data = Letter(
             to_name=to_name,
             to_address=to_address,
-            subject=job.title,
+            subject=job.subject,
             body=letter_content,
         )
 
