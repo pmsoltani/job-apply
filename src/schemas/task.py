@@ -1,3 +1,5 @@
+from datetime import UTC, datetime
+
 from pydantic import BaseModel, Field
 
 from src.schemas.common import RecordId
@@ -11,7 +13,7 @@ _DESC_ANSWER = "The generated answer to the question"
 
 class TaskStatus(BaseModel):
     description: str
-    started_at: str
+    started_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class TasksResponse(BaseModel):

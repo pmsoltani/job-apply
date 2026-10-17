@@ -6,7 +6,7 @@ from src.api.v1.dependencies import LLMDep
 from src.api.v1.generator import router as generator_router
 from src.api.v1.parser import router as parser_router
 from src.configs import c
-from src.schemas import ModelCheckResponse, ModelsResponse, TasksResponse, TaskStatus
+from src.schemas import ModelCheckResponse, ModelsResponse, TasksResponse
 
 
 router = APIRouter()
@@ -44,11 +44,7 @@ async def check_models(llm: LLMDep) -> list[ModelCheckResponse]:
 @router.get("/tasks", response_model=TasksResponse)
 async def list_tasks() -> TasksResponse:
     active = tasks.snapshot()
-    return TasksResponse(
-        running=bool(active),
-        count=len(active),
-        tasks={k: TaskStatus(**v) for k, v in active.items()},
-    )
+    return TasksResponse(running=bool(active), count=len(active), tasks=active)
 
 
 router.include_router(parser_router, prefix="/parse", tags=["parser"])

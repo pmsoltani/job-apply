@@ -16,9 +16,7 @@ async def run_parse(
     parser: ParserService,
     model: str | None = None,
 ) -> None:
-    task_id = f"parse:{job_id}"
-    tasks.register(task_id, f"Parsing job posting ({job_id})")
-    try:
+    with tasks.background(f"parse:{job_id}", "Loading the job posting"):
         partial_job = airtable.get_partial_job(job_id)
         notes, url = partial_job.notes, partial_job.url
 
@@ -31,8 +29,9 @@ async def run_parse(
             lg.error("Neither job URL nor Notes is populated.")
             return
 
+        tasks.update("Parsing the job posting")
         job = await parser.parse(source_text, model=model)
-        tasks.register(task_id, f"Saving: {job.title} @ {job.company.name}")
+        tasks.update(f"Saving: {job.title} @ {job.company.name}")
 
         company_id = airtable.find_or_create_company(
             CompanyCreate.model_validate(job.company)
@@ -53,11 +52,6 @@ async def run_parse(
         airtable.update_job(job_id, update)
         lg.info("Done.")
 
-    except Exception:  # noqa: BLE001 - background-task boundary, traceback is logged
-        lg.exception("Parser pipeline failed.")
-    finally:
-        tasks.unregister(task_id)
-
 
 async def run_generate(
     job_id: RecordId,
@@ -65,23 +59,16 @@ async def run_generate(
     generator: GeneratorService,
     model: str | None = None,
 ) -> None:
-    task_id = f"generate:{job_id}"
-    tasks.register(task_id, f"Generating content ({job_id})")
-    try:
+    with tasks.background(f"generate:{job_id}", "Loading the job"):
         job = airtable.get_job(job_id)
-        tasks.register(task_id, f"Generating content: {job.title}")
+        tasks.update(f"Generating content: {job.title}")
         content = await generator.generate(job.make_prompt(), model=model)
 
-        tasks.register(task_id, f"Saving content: {job.title}")
+        tasks.update("Saving content")
         airtable.update_job(
             job_id, content.model_dump(by_alias=True, exclude_unset=True)
         )
         lg.info("Done.")
-
-    except Exception:  # noqa: BLE001 - background-task boundary, traceback is logged
-        lg.exception("Generator pipeline failed.")
-    finally:
-        tasks.unregister(task_id)
 
 
 async def run_answer(
@@ -90,13 +77,12 @@ async def run_answer(
     generator: GeneratorService,
     job_id: RecordId | None = None,
 ) -> str:
-    task_id = f"answer:{job_id or 'general'}"
-    tasks.register(task_id, "Answering a question")
-    try:
+    first_status = "Loading the job" if job_id else "Answering a question"
+    with tasks.track(f"answer:{job_id or 'general'}", first_status):
         job = airtable.get_job(job_id) if job_id else None
         parts = []
         if job:
-            tasks.register(task_id, f"Answering a question: {job.title}")
+            tasks.update(f"Answering a question: {job.title}")
             parts.append(job.make_prompt())
             if job.letter_content:
                 parts.append(f"<cover_letter>\n{job.letter_content}\n</cover_letter>")
@@ -104,8 +90,6 @@ async def run_answer(
         answer = await generator.answer("\n\n".join(parts))
         lg.info("Done.")
         return answer
-    finally:
-        tasks.unregister(task_id)
 
 
 async def run_compile(
@@ -114,9 +98,7 @@ async def run_compile(
     typst: TypstService,
     cv_style: CVStyle = CVStyle.CLASSIC,
 ) -> None:
-    task_id = f"compile:{job_id}"
-    tasks.register(task_id, f"Compiling PDFs ({job_id})")
-    try:
+    with tasks.background(f"compile:{job_id}", "Loading the job"):
         job = airtable.get_job(job_id)
 
         cv_content = (job.cv_content or "").strip()
@@ -125,7 +107,7 @@ async def run_compile(
             lg.error("Empty letter Content! Run /generate first.")
             return
 
-        tasks.register(task_id, f"Compiling PDFs: {job.title}")
+        tasks.update(f"Compiling PDFs: {job.title}")
 
         to_address = job.address or ""
         if not to_address.strip():
@@ -146,13 +128,8 @@ async def run_compile(
         letter_pdf = typst.compile_letter(letter_data, style=letter_style)
         cv_pdf = typst.compile_cv(cv_content, cv_style)
 
-        tasks.register(task_id, f"Uploading PDFs: {job.title}")
+        tasks.update("Uploading PDFs")
         docs = field_alias(Job, "docs")
         await airtable.upload_attachment(job_id, docs, "letter.pdf", letter_pdf)
         await airtable.upload_attachment(job_id, docs, "cv.pdf", cv_pdf)
         lg.info("Done.")
-
-    except Exception:  # noqa: BLE001 - background-task boundary, traceback is logged
-        lg.exception("Compiler pipeline failed.")
-    finally:
-        tasks.unregister(task_id)
