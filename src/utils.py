@@ -4,7 +4,7 @@ import re
 import subprocess
 from logging import Logger
 
-import aiohttp
+import httpx2
 
 
 # JINA does the tidying server-side. JSON output puts the page in `data.content`,
@@ -26,13 +26,10 @@ def _flatten_html(fragment: str) -> str:
 
 async def fetch_url(url: str, timeout: int) -> str:
     """Fetch a URL via Jina Reader and return the page's markdown content."""
-    client_timeout = aiohttp.ClientTimeout(total=timeout)
-    async with (
-        aiohttp.ClientSession() as session,
-        session.get(url, headers=JINA_HEADERS, timeout=client_timeout) as response,
-    ):
+    async with httpx2.AsyncClient(timeout=timeout, follow_redirects=True) as client:
+        response = await client.get(url, headers=JINA_HEADERS)
         response.raise_for_status()
-        body = await response.text()
+        body = response.text
 
     try:
         data = json.loads(body).get("data")

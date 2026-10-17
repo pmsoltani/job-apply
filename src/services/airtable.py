@@ -2,7 +2,7 @@ import base64
 import logging
 from typing import Any
 
-import aiohttp
+import httpx2
 from pyairtable import Api
 from pyairtable.api.types import RecordDict
 from pyairtable.formulas import match
@@ -148,10 +148,8 @@ class AirtableService:
             "filename": filename,
         }
 
-        async with (
-            aiohttp.ClientSession() as session,
-            session.post(url, headers=headers, json=payload) as response,
-        ):
+        async with httpx2.AsyncClient(timeout=c.TIMEOUT_SECONDS) as client:
+            response = await client.post(url, headers=headers, json=payload)
             response.raise_for_status()
 
         lg.info("Uploaded %s to %s", filename, field_name)

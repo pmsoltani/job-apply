@@ -97,7 +97,7 @@ class ParserService(LLMService):
             model_settings=ModelSettings(max_tokens=c.MAX_TOKENS_PARSER),
         )
         assert isinstance(result.output, JobBase)
-        lg.info("Parsed job (usage: %s)", result.usage())
+        lg.info("Parsed job (usage: %s)", result.usage)
         return result.output
 
 
@@ -154,7 +154,7 @@ class GeneratorService(LLMService):
             model_settings=self._model_settings(),
         )
         assert isinstance(result.output, GeneratedContent)
-        lg.info("Generated content (usage: %s)", result.usage())
+        lg.info("Generated content (usage: %s)", result.usage)
         return result.output
 
     async def answer(self, prompt: str, model: str | None = None) -> str:
@@ -164,5 +164,5 @@ class GeneratorService(LLMService):
             model_settings=self._model_settings(),
         )
         assert isinstance(result.output, str)
-        lg.info("Answered question (usage: %s)", result.usage())
+        lg.info("Answered question (usage: %s)", result.usage)
         return result.output
