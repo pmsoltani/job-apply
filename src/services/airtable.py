@@ -154,4 +154,4 @@ class AirtableService:
         ):
             response.raise_for_status()
 
-        lg.info("Uploaded %s to %s / %s", filename, record_id, field_name)
+        lg.info("Uploaded %s to %s", filename, field_name)

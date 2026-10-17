@@ -17,7 +17,8 @@ class TypstService:
         args = ["--root", c.CV_DIR, "--input", f"data={data}"]
         try:
             subprocess.run(cmd + args, capture_output=True, text=True, check=True)
-            lg.info("Compiled %s → %s", source.name, output.name)
+            template = source.relative_to(c.CV_DIR).as_posix()
+            lg.info("Compiled %s → %s", template, output.name)
         except subprocess.CalledProcessError as e:
             raise RuntimeError(f"typst compile failed:\n{e.stderr}") from e
 
