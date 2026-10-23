@@ -1,8 +1,15 @@
 from fastapi import APIRouter, BackgroundTasks
 
 from src.api.v1.dependencies import AirtableDep, GeneratorDep
-from src.pipelines import run_answer, run_generate
-from src.schemas import QuestionPayload, QuestionResponse, RecordId, WebhookPayload
+from src.pipelines import run_answer, run_draft_email, run_generate
+from src.schemas import (
+    Email,
+    EmailPayload,
+    QuestionPayload,
+    QuestionResponse,
+    RecordId,
+    WebhookPayload,
+)
 
 
 router = APIRouter()
@@ -46,3 +53,13 @@ async def answer_question(
     """Answer an application form question from the personal context."""
     answer = await run_answer(payload.question, airtable, generator, payload.record_id)
     return QuestionResponse.model_validate(payload.model_dump() | {"answer": answer})
+
+
+@router.post("/email")
+async def draft_email(
+    payload: EmailPayload,
+    airtable: AirtableDep,
+    generator: GeneratorDep,
+) -> Email:
+    """Draft a reminder email."""
+    return await run_draft_email(payload.prompt, airtable, generator, payload.record_id)

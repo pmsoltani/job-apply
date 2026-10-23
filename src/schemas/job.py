@@ -131,3 +131,9 @@ class Job(GeneratedContent, JobBase, JobLinks):
         ]
         posting = "\n\n".join(p.strip() for p in parts if p.strip())
         return f"<job_posting>\n{posting}\n</job_posting>"
+
+
+class AppliedJob(Job):
+    """A job that has been applied to, with the application date."""
+
+    date: dt.date = Field(..., alias="Date", description=_DESC_DATE)

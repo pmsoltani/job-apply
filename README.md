@@ -94,7 +94,7 @@ MAX_TOKENS_GENERATOR=8192
 
 ### Personal context
 
-Everything in `context/` goes into the system prompts for generating content and answering questions, after each one's instructions and the shared rules in `prompts/writing_rules.md`.
+Everything in `context/` goes into the system prompts for generating content, answering questions, and drafting emails, after each one's instructions and the shared rules in `prompts/writing_rules.md`.
 
 ```plaintext
 context/
@@ -133,6 +133,7 @@ cloudflared tunnel --url http://localhost:8000
 | GET/POST | `/api/v0/generate`        | Pipeline 2: Generate CV intro & cover letter |
 | GET/POST | `/api/v0/compile`         | Pipeline 3: Compile the PDF files            |
 | POST     | `/api/v0/generate/answer` | Answer an application form question          |
+| POST     | `/api/v0/generate/email`  | Draft a follow-up email for an application   |
 
 The three pipelines return `202 Accepted` immediately and run in the background.
 
@@ -190,6 +191,28 @@ For the extra questions some application forms ask. Unlike the pipelines, it wai
 ```
 
 If the personal context doesn't cover what the question asks, the answer starts with `NOTE:` and says what is missing instead.
+
+### `POST /api/v0/generate/email`
+
+Drafts a reminder to the job's contact, in case the application has not received an update. Like `answer`, it waits and returns the draft, ready to paste into your email client. The body is written from the job posting, its cover letter, the application `Date`, and the `prompt` (any extra points to make). It offers a short chat online, or in person when the job's `Address` or posting puts it in the same city as your `ADDRESS`. The subject is built from the job title and reference, so recruiters can find the application.
+
+```json
+{
+  "prompt": "Mention I'm available for an interview from next week.",
+  "record_id": "recXXXXXX"
+}
+```
+
+```json
+{
+  "to_name": "Dr Smith",
+  "to_address": "j.smith@example.com",
+  "subject": "Application follow-up: Senior AI Engineer (REF-123) | Pooria Soltani",
+  "body": "Dear Dr Smith,\n\n..."
+}
+```
+
+`to_name` and `to_address` come from the job's linked contact, and are `null` if there isn't one.
 
 ### `GET /api/v0/tasks`
 

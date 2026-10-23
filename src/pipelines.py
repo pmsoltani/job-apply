@@ -2,7 +2,16 @@ import logging
 
 from src import tasks
 from src.configs import CVStyle, LetterStyle, c
-from src.schemas import CompanyCreate, ContactCreate, Job, Letter, RecordId, field_alias
+from src.schemas import (
+    AppliedJob,
+    CompanyCreate,
+    ContactCreate,
+    Email,
+    Job,
+    Letter,
+    RecordId,
+    field_alias,
+)
 from src.services import AirtableService, GeneratorService, ParserService, TypstService
 from src.utils import clean_markdown, fetch_url
 
@@ -90,6 +99,36 @@ async def run_answer(
         answer = await generator.answer("\n\n".join(parts))
         lg.info("Done.")
         return answer
+
+
+async def run_draft_email(
+    prompt: str,
+    airtable: AirtableService,
+    generator: GeneratorService,
+    job_id: RecordId,
+) -> Email:
+    with tasks.track(f"email:{job_id}", "Loading the job"):
+        job = AppliedJob.model_validate(await airtable.get_job(job_id))
+        tasks.update(f"Drafting an email: {job.title}")
+        parts = [job.make_prompt()]
+        if job.letter_content:
+            parts.append(f"<cover_letter>\n{job.letter_content}\n</cover_letter>")
+        if job.contact:
+            recipient = job.contact.name or "Hiring Manager"
+            parts.append(f"<recipient>\n{recipient}\n</recipient>")
+        parts.append(f"<application_date>\n{job.date}\n</application_date>")
+        parts.append(f"<applicant_address>\n{c.address}\n</applicant_address>")
+        if job.address:
+            parts.append(f"<job_address>\n{job.address}\n</job_address>")
+        parts.append(f"<email_prompt>\n{prompt}\n</email_prompt>")
+        email = await generator.draft_email("\n\n".join(parts))
+        lg.info("Done.")
+        return Email(
+            subject=f"Application follow-up: {job.subject} | {c.full_name}",
+            body=email.body,
+            to_name=job.contact.name if job.contact else None,
+            to_address=job.contact.email if job.contact else None,
+        )
 
 
 async def run_compile(

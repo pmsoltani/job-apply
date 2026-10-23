@@ -13,7 +13,7 @@ from pydantic_ai.models import Model
 from pydantic_ai.settings import ModelSettings
 
 from src.configs import LLMProvider, c
-from src.schemas import GeneratedContent, JobBase, ModelCheckResponse
+from src.schemas import EmailBase, GeneratedContent, JobBase, ModelCheckResponse
 
 
 lg = logging.getLogger(c.APP_NAME)
@@ -115,6 +115,11 @@ class GeneratorService(LLMService):
             output_type=str,
             system_prompt=self._system_prompt(c.ANSWER_PROMPT_FILE, context),
         )
+        self._email_agent: Agent[None, EmailBase] = Agent(
+            model,
+            output_type=EmailBase,
+            system_prompt=self._system_prompt(c.EMAIL_PROMPT_FILE, context),
+        )
 
     def _system_prompt(self, prompt_file: Path, context: str) -> str:
         """The agent's own instructions, then the shared writing rules and context."""
@@ -165,4 +170,14 @@ class GeneratorService(LLMService):
         )
         assert isinstance(result.output, str)
         lg.info("Answered question (usage: %s)", result.usage)
+        return result.output
+
+    async def draft_email(self, prompt: str, model: str | None = None) -> EmailBase:
+        result = await self._email_agent.run(
+            prompt,
+            model=self._build_model(model) if model else None,
+            model_settings=self._model_settings(),
+        )
+        assert isinstance(result.output, EmailBase)
+        lg.info("Drafted email (usage: %s)", result.usage)
         return result.output
