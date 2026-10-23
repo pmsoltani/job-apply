@@ -1,3 +1,4 @@
+import datetime as dt
 import re
 from typing import Any
 
@@ -46,6 +47,7 @@ _DESC_NOTES = (
     "describes the company as it belongs in the company's notes, not here."
 )
 _DESC_CONTACT = "The hiring contact, only if explicitly stated in the posting."
+_DESC_DATE = "The date the application was submitted."
 
 
 class GeneratedContent(CommonModel):
@@ -115,6 +117,7 @@ class Job(GeneratedContent, JobBase, JobLinks):
     contact: Contact | None = None
     llm: str | None = Field(None, alias="LLM Notes")
     docs: list[dict[str, Any]] = Field(default_factory=list, alias="Docs")
+    date: dt.date | None = Field(None, alias="Date", description=_DESC_DATE)
 
     def make_prompt(self) -> str:
         """A prompt that can be used to regenerate the job application content."""

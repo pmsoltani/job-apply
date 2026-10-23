@@ -122,11 +122,12 @@ async def run_compile(
             to_address=to_address,
             subject=job.subject,
             body=letter_content,
+            date=job.date,
         )
 
         letter_style = LetterStyle.get_style(job.company.country)
         letter_pdf = await typst.compile_letter(letter_data, style=letter_style)
-        cv_pdf = await typst.compile_cv(cv_content, cv_style)
+        cv_pdf = await typst.compile_cv(cv_content, style=cv_style)
 
         tasks.update("Uploading PDFs")
         docs = field_alias(Job, "docs")
