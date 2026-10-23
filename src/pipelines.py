@@ -113,9 +113,11 @@ async def run_draft_email(
         parts = [job.make_prompt()]
         if job.letter_content:
             parts.append(f"<cover_letter>\n{job.letter_content}\n</cover_letter>")
+
+        to_name = c.DEFAULT_RECIPIENT_NAME
         if job.contact:
-            recipient = job.contact.name or "Hiring Manager"
-            parts.append(f"<recipient>\n{recipient}\n</recipient>")
+            to_name = job.contact.name or to_name
+        parts.append(f"<recipient>\n{to_name}\n</recipient>")
         parts.append(f"<application_date>\n{job.date}\n</application_date>")
         parts.append(f"<applicant_address>\n{c.address}\n</applicant_address>")
         if job.address:
@@ -152,7 +154,7 @@ async def run_compile(
         if not to_address.strip():
             lg.warning("Job has no address!")
 
-        to_name = "Hiring Manager"
+        to_name = c.DEFAULT_RECIPIENT_NAME
         if job.contact:
             to_name = job.contact.name or to_name
 

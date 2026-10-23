@@ -12,7 +12,7 @@ class Letter(CommonModel):
     date: dt.date | None = None
     from_name: str = Field(c.full_name, alias="from")
     from_address: str = Field(c.address, alias="from-address")
-    to_name: str = Field("Hiring Manager", alias="to")
+    to_name: str = Field(c.DEFAULT_RECIPIENT_NAME, alias="to")
     to_address: str = Field("", alias="to-address")
     subject: str = ""
     body: str = ""

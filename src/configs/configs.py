@@ -70,6 +70,8 @@ class Configs(BaseSettings):
     LAST_NAME: str = Field(...)
     address: str = Field(...)
 
+    DEFAULT_RECIPIENT_NAME: str = Field(default="Hiring Manager")
+
     @computed_field
     @property
     def full_name(self) -> str:
