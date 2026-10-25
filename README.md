@@ -1,5 +1,7 @@
 # job-apply
 
+<img alt="Project Logo" src="static/logo.svg" width="200">
+
 Parses job postings and generates tailored cover letters and CVs as PDFs, driven from an Airtable base.
 
 Three pipelines, each triggered by a button in Airtable:

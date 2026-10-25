@@ -3,7 +3,9 @@ import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
-from fastapi.responses import RedirectResponse
+from fastapi.openapi.docs import get_swagger_ui_html
+from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
 
 from src.api.v1 import router as v1_router
 from src.configs import c
@@ -36,8 +38,20 @@ app = FastAPI(
     version=c.APP_VERSION,
     description=c.APP_DESCRIPTION,
     lifespan=lifespan,
+    docs_url=None,
+    redoc_url=None,
 )
 app.include_router(v1_router, prefix=c.API_PREFIX)
+app.mount("/static", StaticFiles(directory=c.STATIC_DIR), name="static")
+
+
+@app.get("/docs", include_in_schema=False)
+async def swagger_ui() -> HTMLResponse:
+    return get_swagger_ui_html(
+        openapi_url=app.openapi_url or "/openapi.json",
+        title=f"{app.title}",
+        swagger_favicon_url=str(app.url_path_for("static", path="logo.svg")),
+    )
 
 
 @app.get("/", include_in_schema=False)
