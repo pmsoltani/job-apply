@@ -5,7 +5,7 @@ from typing import Any
 from pydantic import Field, field_validator
 
 from src.configs import JobType
-from src.schemas.common import CommonModel, RecordId
+from src.schemas.common import CommonModel, RecordId, StrippedStr
 from src.schemas.company import Company, CompanyBase
 from src.schemas.contact import Contact, ContactBase
 
@@ -54,11 +54,13 @@ class GeneratedContent(CommonModel):
     fitness: int | None = Field(
         None, description=_DESC_FITNESS, ge=1, le=5, alias="Fitness"
     )
-    reasoning: str | None = Field(None, description=_DESC_REASONING, alias="Reasoning")
-    cv_content: str | None = Field(
+    reasoning: StrippedStr | None = Field(
+        None, description=_DESC_REASONING, alias="Reasoning"
+    )
+    cv_content: StrippedStr | None = Field(
         None, description=_DESC_CV_CONTENT, alias="CV Content"
     )
-    letter_content: str | None = Field(
+    letter_content: StrippedStr | None = Field(
         None, description=_DESC_LETTER_CONTENT, alias="Letter Content"
     )
 

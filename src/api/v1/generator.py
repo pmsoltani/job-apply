@@ -3,10 +3,10 @@ from fastapi import APIRouter, BackgroundTasks
 from src.api.v1.dependencies import AirtableDep, GeneratorDep
 from src.pipelines import run_answer, run_draft_email, run_generate
 from src.schemas import (
+    AnswerPayload,
+    AnswerResponse,
     Email,
     EmailPayload,
-    QuestionPayload,
-    QuestionResponse,
     RecordId,
     WebhookPayload,
 )
@@ -46,13 +46,13 @@ async def generate_get(
 
 @router.post("/answer")
 async def answer_question(
-    payload: QuestionPayload,
+    payload: AnswerPayload,
     airtable: AirtableDep,
     generator: GeneratorDep,
-) -> QuestionResponse:
+) -> AnswerResponse:
     """Answer an application form question from the personal context."""
     answer = await run_answer(payload.question, airtable, generator, payload.record_id)
-    return QuestionResponse.model_validate(payload.model_dump() | {"answer": answer})
+    return AnswerResponse.model_validate(payload.model_dump() | {"answer": answer})
 
 
 @router.post("/email")

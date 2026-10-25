@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 
-from src.schemas.common import CommonModel, RecordId
+from src.schemas.common import CommonModel, RecordId, StrippedStr
 
 
 _DESC_SUBJECT = "The email subject line."
@@ -12,7 +12,7 @@ _DESC_RECORD_ID = "Job to tailor the email to."
 class EmailBase(CommonModel):
     """Job application reminder email."""
 
-    body: str = Field(..., description=_DESC_BODY)
+    body: StrippedStr = Field(..., description=_DESC_BODY)
 
 
 class Email(EmailBase):
@@ -22,5 +22,5 @@ class Email(EmailBase):
 
 
 class EmailPayload(BaseModel):
-    prompt: str = Field("", description=_DESC_PROMPT)
+    prompt: StrippedStr = Field("", description=_DESC_PROMPT)
     record_id: RecordId = Field(..., description=_DESC_RECORD_ID)

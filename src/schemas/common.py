@@ -1,7 +1,7 @@
 import re
 from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
 
 _DESC_ID = "Airtable record ID"
@@ -22,3 +22,6 @@ def field_alias(model: type[BaseModel], field: str) -> str:
     if not isinstance(alias, str):  # Narrows pydantic's untyped `alias` for ty.
         raise ValueError(f"{model.__name__}.{field} has no Airtable alias")  # noqa: TRY004
     return alias
+
+
+StrippedStr = Annotated[str, StringConstraints(strip_whitespace=True)]
