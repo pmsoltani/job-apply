@@ -6,11 +6,11 @@ Parses job postings and generates tailored cover letters and CVs as PDFs, driven
 
 Three pipelines, each triggered by a button in Airtable:
 
-| Pipeline     | Reads                               | Writes                                                 |
-| ------------ | ----------------------------------- | ------------------------------------------------------ |
-| **parse**    | `AD` (URL) or `Notes` (pasted text) | `Job`, `Type`, `Notes`, `Company`, `Recipient`         |
-| **generate** | `Prompt`                            | `Letter Content`, `CV Content`, `Fitness`, `Reasoning` |
-| **compile**  | `Letter Content`, `CV Content`      | `Docs` (two PDFs)                                      |
+| Pipeline     | Reads                                  | Writes                                                 |
+| ------------ | -------------------------------------- | ------------------------------------------------------ |
+| **parse**    | `AD` (URL) or `Notes` (pasted text)    | `Job`, `Ref`, `Type`, `Notes`, `Company`, `Recipient`  |
+| **generate** | The whole job record                   | `Letter Content`, `CV Content`, `Fitness`, `Reasoning` |
+| **compile**  | `Date`, `Letter Content`, `CV Content` | `Docs` (two PDFs)                                      |
 
 `parse` fetches the posting through [Jina Reader](https://jina.ai/reader/) and extracts structured fields with an LLM. `generate` writes the letter from your CV and personal context. `compile` renders both using Typst templates.
 
@@ -245,7 +245,7 @@ Repeat for `/generate` and `/compile`.
 
 ## Workflow
 
-1. Create a new Jobs record; paste the job URL into **AD**, or paste the text into **Notes**.
+1. Create a new Jobs record; paste the job URL into **URL**, or paste the text into **Notes**.
 2. **Parse Job** → wait for the fields to fill in → review **Job**, **Type**, **Company**, **Notes**. Correct anything wrong.
 3. **Generate Docs** → review **Letter Content**, **CV Content**, **Fitness**, and **Reasoning**. Edit to taste.
 4. **Compile Docs** → two PDFs appear in **Docs**.

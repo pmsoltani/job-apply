@@ -1,7 +1,9 @@
 [project]
 name = "job-apply"
-version = "0.1.0"
-description = "Job application automation: parse job postings and generate tailored cover letters + CV PDFs"
+authors = [{name = "Pooria Soltani", email = "pooria.ms@gmail.com"}]
+version = "0.2.0"
+description = "Airtable-driven job application assistant: parses job ads, writes tailored cover letters & CV intros, answers form questions, drafts follow-up emails with an LLM, and compiles PDFs with Typst."
+keywords = ["job-application", "cover-letter", "airtable", "llm", "pydantic-ai", "fastapi", "typst"]
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
@@ -11,8 +13,6 @@ dependencies = [
     "pydantic>=2.13.4",
     "pydantic-ai-slim[anthropic,google,openai]>=2.57.0",
     "pydantic-settings>=2.14.1",
-    "python-dotenv>=1.2.2",
-    "pyyaml>=6.0.3",
     "uvicorn[standard]>=0.46.0",
 ]
 
